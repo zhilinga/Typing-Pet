@@ -16,8 +16,8 @@ android {
         applicationId "com.typingpet.app"
         minSdk 24
         targetSdk 34
-        versionCode 13
-        versionName "1.8.1-zh"
+        versionCode 14
+        versionName "1.9.0-zh"
     }
 
     signingConfigs {
@@ -39,8 +39,12 @@ android {
             }
         }
         release {
-            minifyEnabled false
-            // 固定鍵があるときは必ずそれで署名する(debug 鍵にフォールバックさせない)
+            // R8による難読化と未使用コードの削除を行う。
+            // アクセシビリティサービスのクラス名は AndroidManifest から参照されるため
+            // keep ルールで保護する(proguard-rules.pro)。
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (hasStableKey) {
                 signingConfig signingConfigs.stable
             }

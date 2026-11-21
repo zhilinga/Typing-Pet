@@ -50,12 +50,6 @@ class PetAccessibilityService : AccessibilityService() {
         /** コピー後に出る表示を、この時間内は重複して数えない */
         private const val CLIPBOARD_OVERLAY_COOLDOWN_MS = 1200L
 
-        /**
-         * 「選択を操作した」文脈とみなす時間窓。
-         * 文字を選んでからコピーを押すまでの間隔はこの程度に収まる。
-         */
-        private const val COPY_CONTEXT_WINDOW_MS = 8000L
-
         /** コピー後の通知ウィンドウを見分ける手がかり */
         private val CLIPBOARD_WINDOW_HINTS = listOf(
             "clipboard", "copy", "clipper", "clipoverlay"
@@ -141,12 +135,6 @@ class PetAccessibilityService : AccessibilityService() {
 
     /** 直近にコピー完了ウィンドウを拾った時刻 */
     private var lastClipboardOverlayAt = 0L
-
-    /** 直近に「選択を操作した」時刻。SystemUI 浮層と組み合わせてコピーを確定する */
-    private var lastCopyContextAt = 0L
-
-    /** いま選択操作の直後か */
-    private var recentCopyContext = false
 
     /** 範囲選択が始まった時刻。コピーの補助判定に使う */
     private var rangeSelectedAt = 0L
@@ -269,31 +257,21 @@ class PetAccessibilityService : AccessibilityService() {
     private fun onWindowEvent(event: AccessibilityEvent) {
         if (!OverlayService.watchCopy) return
 
-        val pkg = event.packageName?.toString()?.lowercase() ?: ""
-        val cls = event.className?.toString()?.lowercase() ?: ""
+        // ウィンドウ変化は1秒に何度も来るので、まず安い条件で弾く
+        val pkgRaw = event.packageName ?: return
+        if (pkgRaw.isEmpty()) return
+        val clsRaw = event.className ?: return
+        if (clsRaw.isEmpty()) return
 
-        // 明示的にクリップボード名を持つウィンドウが来る端末向け。
-        // 実測では com.android.systemui の LinearLayout は
-        // ステータスバーの通信速度表示であり、コピーとは無関係だった。
-        // そのため「パッケージが systemui」というだけでは判定しない。
-        val hint = pkg + " " + cls
-        if (CLIPBOARD_WINDOW_HINTS.any { hint.contains(it) }) {
-            val now = System.currentTimeMillis()
-            if (now - lastClipboardOverlayAt < CLIPBOARD_OVERLAY_COOLDOWN_MS) return
-            lastClipboardOverlayAt = now
-            cancelPendingDelete()
-            OverlayService.reactCopy()
-        }
-    }
+        // 手がかり語はいずれも小文字。大文字が混じったときだけ変換する
+        val hint = (pkgRaw + ' ' + clsRaw).lowercase()
+        if (CLIPBOARD_WINDOW_HINTS.none { hint.contains(it) }) return
 
-    /**
-     * 「いま選択メニューを操作した」という文脈を記録する。
-     * SystemUI の表示だけでは他の通知と区別できないため、
-     * 選択範囲が動いた直後だけコピーと結びつける。
-     */
-    private fun markCopyContext() {
-        recentCopyContext = true
-        lastCopyContextAt = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        if (now - lastClipboardOverlayAt < CLIPBOARD_OVERLAY_COOLDOWN_MS) return
+        lastClipboardOverlayAt = now
+        cancelPendingDelete()
+        OverlayService.reactCopy()
     }
 
     // ---------- 通常の文字変化 ----------
@@ -305,7 +283,7 @@ class PetAccessibilityService : AccessibilityService() {
         val watchSpace = OverlayService.watchSpace
         val watchEnter = OverlayService.watchEnter
         val watchPaste = OverlayService.watchPaste
-        val anySpecial = watchDelete || watchSpace || watchEnter || watchPaste
+        val anySpecial = watchDelete || watchSpace || watchEnter || watchPaste || OverlayService.watchCopy
         if (event.isPassword || (maxLen <= 0 && !anySpecial)) {
             OverlayService.reactIfRunning()
             return
@@ -456,11 +434,7 @@ class PetAccessibilityService : AccessibilityService() {
         }
 
         // 範囲選択が始まった時刻を記録(補助判定用)
-        if (isRange && !wasRange) {
-            rangeSelectedAt = now
-            // 選択メニュー操作の文脈として記録しておく
-            markCopyContext()
-        }
+        if (isRange && !wasRange) rangeSelectedAt = now
 
         // 以下はカーソル移動からの入力推定。設定でONのときだけ
         if (!fallback) return
