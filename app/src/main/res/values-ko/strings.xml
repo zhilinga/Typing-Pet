@@ -129,4 +129,5 @@
     <string name="btn_clear_debug">기록 지우기</string>
     <string name="debug_empty">아직 기록이 없습니다. ON으로 바꾸고 복사 등을 시도해 보세요.</string>
     <string name="debug_cleared">기록을 지웠습니다</string>
+    <string name="btn_share_debug">기록 공유</string>
 </resources>

@@ -129,4 +129,5 @@
     <string name="btn_clear_debug">Clear log</string>
     <string name="debug_empty">No records yet. Turn this on, then try copying.</string>
     <string name="debug_cleared">Log cleared</string>
+    <string name="btn_share_debug">Share log</string>
 </resources>

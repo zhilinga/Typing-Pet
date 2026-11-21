@@ -1268,7 +1268,7 @@ class MainActivity : Activity() {
      * コピーが反応しないときに、どんなラベル・パッケージで来ているかを確かめるため。
      */
     private fun showDebugLog() {
-        val body = DebugLog.tail(this, 150).ifEmpty { getString(R.string.debug_empty) }
+        val body = DebugLog.tail(this, 300).ifEmpty { getString(R.string.debug_empty) }
         val scroll = ScrollView(this).apply {
             setPadding(dp(16), dp(8), dp(16), dp(0))
             addView(TextView(this@MainActivity).apply {
@@ -1283,11 +1283,38 @@ class MainActivity : Activity() {
             .setTitle(getString(R.string.btn_show_debug))
             .setView(scroll)
             .setPositiveButton(getString(R.string.btn_ok), null)
-            .setNeutralButton(getString(R.string.btn_clear_debug)) { _, _ ->
+            .setNeutralButton(getString(R.string.btn_share_debug)) { _, _ -> shareDebugLog() }
+            .setNegativeButton(getString(R.string.btn_clear_debug)) { _, _ ->
                 DebugLog.clear(this)
                 Toast.makeText(this, getString(R.string.debug_cleared), Toast.LENGTH_SHORT).show()
             }
             .show()
+    }
+
+    /** 記録をファイルとして共有する(受け取った側で中身を確認できるように) */
+    private fun shareDebugLog() {
+        try {
+            val text = DebugLog.read(this)
+            if (text.isEmpty()) {
+                Toast.makeText(this, getString(R.string.debug_empty), Toast.LENGTH_SHORT).show()
+                return
+            }
+            val dir = File(cacheDir, "share").apply { mkdirs() }
+            val f = File(dir, "detect_debug.txt")
+            f.writeText(text)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", f
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "TypingPet detect log")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.btn_share_debug)))
+        } catch (e: Throwable) {
+            Toast.makeText(this, getString(R.string.toast_backup_failed, e.message ?: "?"), Toast.LENGTH_LONG).show()
+        }
     }
 
     // ---------- ホーム画面アイコン(ショートカット) ----------
