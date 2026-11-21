@@ -208,7 +208,7 @@ class PetAccessibilityService : AccessibilityService() {
     private fun recordDebugEvent(event: AccessibilityEvent) {
         try {
             val sb = StringBuilder()
-            sb.append(event.eventTypeToString(event.eventType))
+            sb.append(AccessibilityEvent.eventTypeToString(event.eventType))
             val pkg = event.packageName?.toString() ?: ""
             if (pkg.isNotEmpty()) sb.append(" pkg=").append(pkg)
             val cls = event.className?.toString() ?: ""
