@@ -130,4 +130,6 @@
     <string name="debug_empty">아직 기록이 없습니다. ON으로 바꾸고 복사 등을 시도해 보세요.</string>
     <string name="debug_cleared">기록을 지웠습니다</string>
     <string name="btn_share_debug">기록 공유</string>
+    <string name="switch_ime_title">입력기 후보 바에도 반응</string>
+    <string name="switch_ime_desc">중국어처럼 확정 전까지 입력란에 문자가 들어가지 않는 입력기에서도 타건에 반응합니다. 입력 내용은 읽지 않습니다.</string>
 </resources>

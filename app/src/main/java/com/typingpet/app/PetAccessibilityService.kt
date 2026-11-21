@@ -50,6 +50,12 @@ class PetAccessibilityService : AccessibilityService() {
         /** コピー後に出る表示を、この時間内は重複して数えない */
         private const val CLIPBOARD_OVERLAY_COOLDOWN_MS = 1200L
 
+        /**
+         * 入力法のウィンドウ変化を「1打鍵」にまとめる間隔。
+         * 1文字打つと候補バーの更新が複数回来るので、この間は無視する。
+         */
+        private const val IME_EVENT_THROTTLE_MS = 45L
+
         /** コピー後の通知ウィンドウを見分ける手がかり */
         private val CLIPBOARD_WINDOW_HINTS = listOf(
             "clipboard", "copy", "clipper", "clipoverlay"
@@ -136,6 +142,12 @@ class PetAccessibilityService : AccessibilityService() {
     /** 直近にコピー完了ウィンドウを拾った時刻 */
     private var lastClipboardOverlayAt = 0L
 
+    /** 直近に入力法のイベントを処理した時刻(連続分をまとめるため) */
+    private var lastImeEventAt = 0L
+
+    /** 端末の入力法パッケージ一覧(一度だけ取得する) */
+    private var imePackagesCache: Set<String>? = null
+
     /** 範囲選択が始まった時刻。コピーの補助判定に使う */
     private var rangeSelectedAt = 0L
 
@@ -186,12 +198,19 @@ class PetAccessibilityService : AccessibilityService() {
 
         // デバッグ用: クリック/ウィンドウ変化の内容を記録しておく。
         // 「コピーが検知できない」ときに、どんなラベルが来ているかを確認するため。
-        if (Prefs.getDebugLog(this) &&
-            (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
-                event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED)
-        ) {
-            recordDebugEvent(event)
+        if (Prefs.getDebugLog(this)) {
+            val t = event.eventType
+            // 入力法のパッケージだけは WINDOW_CONTENT_CHANGED も記録する
+            // (打鍵検知が効いているかを確かめるため、この種別だけは絞って残す)
+            val isImeContent = t == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+                (event.packageName?.toString()?.let { isImePackage(it) } == true)
+            if (t == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                t == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                t == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+                isImeContent
+            ) {
+                recordDebugEvent(event)
+            }
         }
 
         when (event.eventType) {
@@ -255,6 +274,9 @@ class PetAccessibilityService : AccessibilityService() {
      * その出現をコピーの合図として使う。
      */
     private fun onWindowEvent(event: AccessibilityEvent) {
+        // 入力法の候補バーはここに来る。先に処理する(コピー検知より優先度が高い)
+        if (handleImeEvent(event)) return
+
         if (!OverlayService.watchCopy) return
 
         // ウィンドウ変化は1秒に何度も来るので、まず安い条件で弾く
@@ -274,7 +296,62 @@ class PetAccessibilityService : AccessibilityService() {
         OverlayService.reactCopy()
     }
 
-    // ---------- 通常の文字変化 ----------
+    // ---------- 入力法の候補バーから打鍵を推定 ----------
+
+    /**
+     * 中国語などの入力法では、拼音を打っている間は入力欄に文字が入らない。
+     * 確定して初めて漢字が入力欄に現れるため、TYPE_VIEW_TEXT_CHANGED では
+     * 「打鍵した」ことが分からない(確定するまで無反応になる)。
+     *
+     * 一方、入力法は1文字打つたびに候補バーを更新する。その更新は
+     * TYPE_WINDOW_CONTENT_CHANGED として、入力法のパッケージ名で届く。
+     * これを見て「打鍵があった」と判断する。
+     *
+     * 入力内容は読まない。パッケージ名が入力法かどうかだけを見る。
+     *
+     * @return true を返したら、このイベントは処理済みとして後続に渡さない
+     */
+    private fun handleImeEvent(event: AccessibilityEvent): Boolean {
+        if (!Prefs.getImeWatching(this)) return false
+        if (OverlayService.maxKeyLength <= 0 && !anySpecialWatched()) return false
+
+        val pkg = event.packageName?.toString() ?: return false
+        if (pkg.isEmpty()) return false
+        if (!isImePackage(pkg)) return false
+
+        // 入力法のウィンドウ変化は1打鍵につき複数回来ることがある。
+        // 短い間隔で連続した分は1回の打鍵としてまとめる。
+        val now = System.currentTimeMillis()
+        if (now - lastImeEventAt < IME_EVENT_THROTTLE_MS) return true
+        lastImeEventAt = now
+
+        // 打鍵があった = 入力中として反応させる。
+        // 「文字で切り替え」は入力内容が分からないので、入力中の表情切り替えのみ。
+        OverlayService.reactImeKey()
+        return true
+    }
+
+    /**
+     * このパッケージが入力法(IME)か。
+     * 端末に入っている入力法を列挙して照合する。列挙は重いので結果を覚えておく。
+     */
+    private fun isImePackage(pkg: String): Boolean {
+        val cached = imePackagesCache
+        if (cached != null) return pkg in cached
+
+        val set = HashSet<String>()
+        try {
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                as? android.view.inputmethod.InputMethodManager
+            imm?.enabledInputMethodList?.forEach { info ->
+                info.packageName?.let { set.add(it) }
+            }
+        } catch (e: Throwable) {
+            // 取得できなくても致命的ではない
+        }
+        imePackagesCache = set
+        return pkg in set
+    }
 
     private fun onTextChanged(event: AccessibilityEvent) {
         // 表示中のキャラに文字の反応も特殊キーもない / パスワード欄 → 中身は一切見ない

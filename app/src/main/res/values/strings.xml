@@ -130,4 +130,6 @@
     <string name="debug_empty">まだ記録がありません。ONにしてから、コピーなどを試してみてください。</string>
     <string name="debug_cleared">記録を消しました</string>
     <string name="btn_share_debug">記録を共有</string>
+    <string name="switch_ime_title">入力法の候補バーでも反応させる</string>
+    <string name="switch_ime_desc">中国語など、確定するまで入力欄に文字が入らない入力法でも、打鍵に反応するようになります。入力内容は読みません。</string>
 </resources>

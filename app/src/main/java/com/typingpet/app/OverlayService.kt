@@ -90,6 +90,15 @@ class OverlayService : Service() {
             instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.COPY_KEY] ?: -1) } } }
         }
 
+        /**
+         * 入力法の候補バーが更新された = 打鍵があった、として反応させる。
+         * 入力内容が分からないので、文字ごとの反応ではなく
+         * 「入力中の表情」だけを進める。
+         */
+        fun reactImeKey() {
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(-1) } } }
+        }
+
         fun reactIfRunning() {
             instance?.reactAll(null, 0)
         }

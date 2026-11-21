@@ -130,4 +130,6 @@
     <string name="debug_empty">No records yet. Turn this on, then try copying.</string>
     <string name="debug_cleared">Log cleared</string>
     <string name="btn_share_debug">Share log</string>
+    <string name="switch_ime_title">React to the IME candidate bar</string>
+    <string name="switch_ime_desc">Makes typing react even with IMEs (e.g. Chinese) that do not put characters into the field until confirmation. Input content is never read.</string>
 </resources>

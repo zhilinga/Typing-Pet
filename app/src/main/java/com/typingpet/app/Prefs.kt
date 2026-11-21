@@ -59,6 +59,15 @@ object Prefs {
     fun setCopyBySelection(context: Context, value: Boolean) =
         sp(context).edit().putBoolean("copyBySelection", value).apply()
 
+    /**
+     * 入力法の候補バーの更新を「打鍵」として扱うか。
+     * 中国語入力など、確定するまで入力欄に文字が入らない場合に必要。
+     */
+    fun getImeWatching(context: Context): Boolean =
+        sp(context).getBoolean("imeWatching", true)
+    fun setImeWatching(context: Context, value: Boolean) =
+        sp(context).edit().putBoolean("imeWatching", value).apply()
+
     // 検知のデバッグ記録を取るか(コピーが反応しないときの調査用)
     fun getDebugLog(context: Context): Boolean =
         sp(context).getBoolean("debugLog", false)

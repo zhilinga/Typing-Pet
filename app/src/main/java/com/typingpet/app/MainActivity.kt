@@ -559,6 +559,15 @@ class MainActivity : Activity() {
                 Prefs.setEnterOnSubmit(this@MainActivity, checked)
             })
 
+            addView(divider())
+            addView(switchRow(
+                getString(R.string.switch_ime_title),
+                getString(R.string.switch_ime_desc),
+                Prefs.getImeWatching(this@MainActivity)
+            ) { checked ->
+                Prefs.setImeWatching(this@MainActivity, checked)
+            })
+
             addView(spacer(12))
             addView(smallLabel(getString(R.string.label_paste_min)))
             addView(descLabel(getString(R.string.desc_paste_min)))

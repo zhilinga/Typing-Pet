@@ -130,4 +130,6 @@
     <string name="debug_empty">还没有记录。开启后去试着复制一下。</string>
     <string name="debug_cleared">已清空记录</string>
     <string name="btn_share_debug">分享记录</string>
+    <string name="switch_ime_title">按输入法候选栏触发</string>
+    <string name="switch_ime_desc">中文等输入法在确认前不往输入框写字符，开启后打键也会触发反应。不读取输入内容。</string>
 </resources>
