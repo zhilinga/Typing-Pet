@@ -2,7 +2,6 @@ package com.typingpet.app
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -19,12 +18,18 @@ import android.view.animation.OvershootInterpolator
  * - 文字で切り替え: 登録文字が入力されたら、その画像からランダムで1枚
  * 入力が IDLE_REVERT_DELAY_MS 止まると待機に戻り、次は1番目から始まる。
  * 画像が1枚もなければ内蔵イラスト(4色 x 表情)で動く。
+ *
+ * GIF / アニメーションWebP も同じ枠に入れられる。動画を表示している間は
+ * 毎フレーム再描画してコマを進める。
  */
 class PetView(context: Context) : View(context) {
 
     companion object {
         private const val IDLE_REVERT_DELAY_MS = 700L
         private const val BOUNCE_DURATION_MS = 420L
+
+        /** 動画を出している間の再描画間隔(約30fps) */
+        private const val ANIM_FRAME_MS = 33L
     }
 
     var preset = 0
@@ -37,14 +42,26 @@ class PetView(context: Context) : View(context) {
     var showShadow = true
         set(value) { field = value; invalidate() }
 
-    private var idleFrames: List<Bitmap> = emptyList()
-    private var steps: List<List<Bitmap>> = emptyList()
-    private var triggerFrames: List<List<Bitmap>> = emptyList()
+    private var idleFrames: List<PetFrame> = emptyList()
+    private var steps: List<List<PetFrame>> = emptyList()
+    private var triggerFrames: List<List<PetFrame>> = emptyList()
 
     private var stepIndex = -1
-    private var idleBitmap: Bitmap? = null
-    private var shown: Bitmap? = null
+    private var idleFrame: PetFrame? = null
+    private var shown: PetFrame? = null
     private var builtInFace = 0
+
+    /** 表示中の絵を出し始めた時刻(動画のコマ送りに使う) */
+    private var shownSince = 0L
+
+    /** 動画を出している間だけ回す再描画用 */
+    private val animHandler = Handler(Looper.getMainLooper())
+    private val animTick = object : Runnable {
+        override fun run() {
+            invalidate()
+            animHandler.postDelayed(this, ANIM_FRAME_MS)
+        }
+    }
 
     private var scaleXAnim = 1f
     private var scaleYAnim = 1f
@@ -69,26 +86,44 @@ class PetView(context: Context) : View(context) {
     private val inkFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#3A2E2C") }
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#14000000") }
     private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#59FFFFFF") }
-    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val framePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val dstRect = RectF()
 
     /**
      * 画像一式を差し替える(設定変更時にOverlayServiceから呼ばれる)。
      * triggers は Prefs.getTriggers と同じ並びにすること(番号で対応づけるため)。
      */
-    fun setImages(idle: List<Bitmap>, steps: List<List<Bitmap>>, triggers: List<List<Bitmap>>) {
-        idleFrames = idle
+    fun setImages(idle: List<PetFrame>, steps: List<List<PetFrame>>, triggers: List<List<PetFrame>>) {
+        this.idleFrames = idle
         this.steps = steps.filter { it.isNotEmpty() }
-        triggerFrames = triggers
+        this.triggerFrames = triggers
         goIdle()
+    }
+
+    /** 表示する絵を差し替え、動画ならコマ送りを開始する */
+    private fun show(frame: PetFrame?) {
+        if (shown !== frame) {
+            shown?.attachHost(null)
+            shownSince = System.currentTimeMillis()
+        }
+        shown = frame
+        frame?.attachHost(this)
+        syncAnimation()
+        invalidate()
+    }
+
+    /** 自前でコマ送りが必要な動画(Movie)のときだけ再描画ループを回す */
+    private fun syncAnimation() {
+        animHandler.removeCallbacks(animTick)
+        if (shown?.needsManualTick == true) animHandler.postDelayed(animTick, ANIM_FRAME_MS)
     }
 
     private fun goIdle() {
         revertHandler.removeCallbacks(revertRunnable)
         stepIndex = -1
         builtInFace = 0
-        idleBitmap = idleFrames.randomOrNull() ?: steps.firstOrNull()?.randomOrNull()
-        shown = idleBitmap
-        invalidate()
+        idleFrame = idleFrames.randomOrNull() ?: steps.firstOrNull()?.randomOrNull()
+        show(idleFrame)
     }
 
     /**
@@ -100,11 +135,10 @@ class PetView(context: Context) : View(context) {
         if (steps.isNotEmpty()) stepIndex = (stepIndex + 1) % steps.size
         builtInFace = (builtInFace % 3) + 1 // 内蔵イラストは入力中 表情1〜3を循環
 
-        val triggerBmp = if (trigger >= 0) triggerFrames.getOrNull(trigger)?.randomOrNull() else null
-        val stepBmp = steps.getOrNull(stepIndex)?.randomOrNull()
+        val triggerFrame = if (trigger >= 0) triggerFrames.getOrNull(trigger)?.randomOrNull() else null
+        val stepFrame = steps.getOrNull(stepIndex)?.randomOrNull()
 
-        shown = triggerBmp ?: stepBmp ?: idleBitmap
-        invalidate()
+        show(triggerFrame ?: stepFrame ?: idleFrame)
 
         revertHandler.postDelayed(revertRunnable, IDLE_REVERT_DELAY_MS)
 
@@ -135,7 +169,15 @@ class PetView(context: Context) : View(context) {
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         revertHandler.removeCallbacks(revertRunnable)
+        animHandler.removeCallbacks(animTick)
+        shown?.attachHost(null)
         bounceAnimator?.cancel()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        shown?.attachHost(this)
+        syncAnimation()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -146,19 +188,28 @@ class PetView(context: Context) : View(context) {
         canvas.save()
         canvas.scale(scaleXAnim, scaleYAnim, cx, cy + height * 0.16f)
 
-        val bmp = shown
-        if (bmp != null) drawBitmapFrame(canvas, cx, cy, bmp) else drawBuiltIn(canvas, cx, cy)
+        val frame = shown
+        if (frame != null) drawFrame(canvas, cx, cy, frame) else drawBuiltIn(canvas, cx, cy)
 
         canvas.restore()
     }
 
-    private fun drawBitmapFrame(canvas: Canvas, cx: Float, cy: Float, bmp: Bitmap) {
+    private fun drawFrame(canvas: Canvas, cx: Float, cy: Float, frame: PetFrame) {
         val size = minOf(width, height).toFloat()
-        val scale = size / maxOf(bmp.width, bmp.height)
-        val w = bmp.width * scale
-        val h = bmp.height * scale
-        if (showShadow) canvas.drawOval(RectF(cx - w * 0.4f, cy + h * 0.42f, cx + w * 0.4f, cy + h * 0.5f), shadowPaint)
-        canvas.drawBitmap(bmp, null, RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f), bitmapPaint)
+        val longest = maxOf(frame.width, frame.height).coerceAtLeast(1)
+        val scale = size / longest
+        val w = frame.width * scale
+        val h = frame.height * scale
+
+        if (showShadow) {
+            canvas.drawOval(
+                RectF(cx - w * 0.4f, cy + h * 0.42f, cx + w * 0.4f, cy + h * 0.5f),
+                shadowPaint
+            )
+        }
+
+        dstRect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+        frame.draw(canvas, dstRect, framePaint, System.currentTimeMillis() - shownSince)
     }
 
     private fun drawBuiltIn(canvas: Canvas, cx: Float, cy: Float) {

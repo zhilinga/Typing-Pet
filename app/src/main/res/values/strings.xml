@@ -48,6 +48,7 @@
 
     <string name="label_idle">待機イラスト</string>
     <string name="btn_add_image">＋ 画像を追加(複数選択OK)</string>
+    <string name="btn_add_image_hint">＋ 画像を追加(GIF・アニメーションWebP もOK)</string>
     <string name="empty_hint">まだ画像がありません</string>
     <string name="desc_idle">入力していない時に表示されます。複数登録すると、待機に戻るたびにランダムで1枚選ばれます。未登録ならタイピング中の1番目の画像(なければ内蔵カラー)を使います。</string>
     <string name="label_steps">タイピング中イラスト(順番)</string>

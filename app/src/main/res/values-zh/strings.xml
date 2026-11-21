@@ -48,6 +48,7 @@
 
     <string name="label_idle">待机插画</string>
     <string name="btn_add_image">＋ 添加图片（可多选）</string>
+    <string name="btn_add_image_hint">＋ 添加图片（支持 GIF / 动图 WebP）</string>
     <string name="empty_hint">还没有图片</string>
     <string name="desc_idle">没有输入时显示。注册多张时，每次回到待机都会随机选一张。未注册时使用打字中的第 1 张（若没有则用内置配色）。</string>
     <string name="label_steps">打字中插画（按顺序）</string>

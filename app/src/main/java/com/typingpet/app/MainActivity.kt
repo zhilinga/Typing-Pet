@@ -100,8 +100,10 @@ class MainActivity : Activity() {
      * 画像を選べるアプリの中から好きなものを選べる。
      */
     private fun imagePickerIntent(multiple: Boolean): Intent {
+        // GIF・アニメーションWebP も選べるように、画像に加えて動画MIMEも許可する
         val get = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "image/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "image/gif", "image/webp"))
             addCategory(Intent.CATEGORY_OPENABLE)
             if (multiple) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
@@ -791,7 +793,7 @@ class MainActivity : Activity() {
 
         addView(spacer(8))
         addView(Button(this@MainActivity).apply {
-            text = getString(R.string.btn_add_image)
+            text = getString(R.string.btn_add_image_hint)
             setOnClickListener { pickImages(Prefs.CAT_IDLE, -1) }
         })
     }
@@ -1016,6 +1018,23 @@ class MainActivity : Activity() {
                 clipToOutline = true
                 thumbFor(uri)?.let { setImageBitmap(it) }
             })
+
+            // 動画(GIF/アニメーションWebP)には左上にしるしを付ける
+            if (isAnimatedUri(uri)) {
+                cell.addView(TextView(this).apply {
+                    text = "GIF"
+                    textSize = 9f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(4), dp(1), dp(4), dp(1))
+                    background = rounded(Color.parseColor("#CC1D1B19"), 6)
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP or Gravity.START
+                    )
+                })
+            }
             // 右上の × で削除
             cell.addView(TextView(this).apply {
                 text = "×"
@@ -1042,9 +1061,31 @@ class MainActivity : Activity() {
 
     private fun thumbFor(uri: String): Bitmap? {
         if (thumbCache.containsKey(uri)) return thumbCache[uri]
-        val bmp = ImageLoader.load(this, uri, dp(64))
+        val bmp = ImageLoader.loadFrame(this, uri, dp(64))?.preview
         thumbCache[uri] = bmp
         return bmp
+    }
+
+    /** この画像が動画(GIF / アニメーションWebP)かどうか。サムネイルのしるし用 */
+    private fun isAnimatedUri(uri: String): Boolean = try {
+        val path = Uri.parse(uri).path ?: ""
+        val byExt = path.lowercase().let { it.endsWith(".gif") || it.endsWith(".webp") }
+        if (byExt) {
+            true
+        } else {
+            contentResolver.openInputStream(Uri.parse(uri))?.use { ins ->
+                val head = ByteArray(12)
+                val n = ins.read(head)
+                val isGif = n >= 6 &&
+                    String(head, 0, 6, Charsets.US_ASCII).let { it == "GIF87a" || it == "GIF89a" }
+                val isWebp = n >= 12 &&
+                    String(head, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+                    String(head, 8, 4, Charsets.US_ASCII) == "WEBP"
+                isGif || isWebp
+            } ?: false
+        }
+    } catch (e: Exception) {
+        false
     }
 
     private fun pickImages(category: String, index: Int) {

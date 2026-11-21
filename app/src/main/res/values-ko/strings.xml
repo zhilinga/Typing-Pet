@@ -48,6 +48,7 @@
 
     <string name="label_idle">대기 이미지</string>
     <string name="btn_add_image">+ 이미지 추가(여러 장 선택 가능)</string>
+    <string name="btn_add_image_hint">+ 이미지 추가(GIF·애니메이션 WebP 가능)</string>
     <string name="empty_hint">아직 이미지가 없습니다</string>
     <string name="desc_idle">입력하지 않을 때 표시됩니다. 여러 장이면 대기로 돌아올 때마다 랜덤으로 1장 선택됩니다. 비어 있으면 타이핑 중 1번째 이미지(없으면 내장 색상)를 사용합니다.</string>
     <string name="label_steps">타이핑 중 이미지(순서)</string>

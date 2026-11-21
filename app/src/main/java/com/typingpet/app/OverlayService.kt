@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.pm.ServiceInfo
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -36,7 +35,7 @@ class OverlayService : Service() {
     private val pets = LinkedHashMap<String, Pet>()
 
     /** 読み込み済み画像のキャッシュ(設定変更のたびに全部読み直さないように) */
-    private val bitmapCache = HashMap<String, Bitmap>()
+    private val frameCache = HashMap<String, PetFrame>()
 
     @Volatile private var maxKeyLen = 0
     @Volatile private var watchDel = false
@@ -142,11 +141,11 @@ class OverlayService : Service() {
         targets.forEach { c ->
             inUse.addAll(c.idle); c.steps.forEach { inUse.addAll(it) }; c.triggers.forEach { inUse.addAll(it.images) }
         }
-        bitmapCache.keys.retainAll(inUse)
+        frameCache.keys.retainAll(inUse)
 
         val req = dpToPx(260) // 最大サイズ(特大)に合わせて縮小読み込み
-        fun get(uri: String): Bitmap? =
-            bitmapCache[uri] ?: ImageLoader.load(this, uri, req)?.also { bitmapCache[uri] = it }
+        fun get(uri: String): PetFrame? =
+            frameCache[uri] ?: ImageLoader.loadFrame(this, uri, req)?.also { frameCache[uri] = it }
 
         val sizePx = dpToPx(Prefs.getSizeDp(this))
         val flags = baseFlags()
@@ -242,7 +241,7 @@ class OverlayService : Service() {
         instance = null
         pets.values.forEach { p -> try { windowManager.removeView(p.view) } catch (e: Exception) {} }
         pets.clear()
-        bitmapCache.clear()
+        frameCache.clear()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

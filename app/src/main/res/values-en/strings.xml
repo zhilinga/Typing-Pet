@@ -48,6 +48,7 @@
 
     <string name="label_idle">Idle images</string>
     <string name="btn_add_image">+ Add images (multi-select OK)</string>
+    <string name="btn_add_image_hint">+ Add images (GIF / animated WebP OK)</string>
     <string name="empty_hint">No images yet</string>
     <string name="desc_idle">Shown when you\'re not typing. With several, one is picked at random each time it goes idle. If empty, the 1st typing image (or the built-in color) is used.</string>
     <string name="label_steps">Typing images (in order)</string>
