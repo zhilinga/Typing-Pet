@@ -99,4 +99,11 @@
     <string name="toast_import_failed">有图片读取失败</string>
     <string name="perm_ok">✓ OK</string>
     <string name="perm_set">设置 ›</string>
+    <string name="accessibility_description">用于让宠物对输入作出反应。只检测输入框内容是否发生变化，不保存、不发送任何内容。不会读取密码框。</string>
+    <string name="label_detect">输入检测兼容设置</string>
+    <string name="desc_detect">不同应用上报输入的方式不同。只有某些应用没反应时才需要调整这里。</string>
+    <string name="switch_selection_title">按光标移动触发</string>
+    <string name="switch_selection_desc">适用于只上报光标位置、不上报文字变化的应用（如 WebView）。开启后部分应用可能重复触发。</string>
+    <string name="switch_enter_submit_title">把发送键当作回车</string>
+    <string name="switch_enter_submit_desc">单行输入框里按输入法的发送/搜索时，不会插入换行而是清空输入框。把这种情况视为回车。</string>
 </resources>

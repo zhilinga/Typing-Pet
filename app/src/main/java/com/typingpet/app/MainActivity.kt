@@ -537,6 +537,31 @@ class MainActivity : Activity() {
 
         basicBox.addView(spacer(16))
 
+        // 輸入検知の互換設定。アプリによって通知の出し方が違うための調整弁
+        basicBox.addView(sectionCard {
+            addView(smallLabel(getString(R.string.label_detect)))
+            addView(descLabel(getString(R.string.desc_detect)))
+            addView(spacer(4))
+
+            addView(switchRow(
+                getString(R.string.switch_selection_title),
+                getString(R.string.switch_selection_desc),
+                Prefs.getSelectionFallback(this@MainActivity)
+            ) { checked ->
+                Prefs.setSelectionFallback(this@MainActivity, checked)
+            })
+            addView(divider())
+            addView(switchRow(
+                getString(R.string.switch_enter_submit_title),
+                getString(R.string.switch_enter_submit_desc),
+                Prefs.getEnterOnSubmit(this@MainActivity)
+            ) { checked ->
+                Prefs.setEnterOnSubmit(this@MainActivity, checked)
+            })
+        })
+
+        basicBox.addView(spacer(16))
+
         basicBox.addView(sectionCard {
             addView(smallLabel(getString(R.string.label_icon_section)))
             addView(descLabel(getString(R.string.desc_icon_section)))

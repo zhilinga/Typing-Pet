@@ -99,4 +99,11 @@
     <string name="toast_import_failed">読み込めなかった画像があります</string>
     <string name="perm_ok">✓ OK</string>
     <string name="perm_set">設定する ›</string>
+    <string name="accessibility_description">ペットが入力に反応するために使います。入力欄の文字が変わったことだけを見て、内容の保存・送信は行いません。パスワード欄は見ません。</string>
+    <string name="label_detect">入力検知の互換設定</string>
+    <string name="desc_detect">アプリによって入力の通知の出し方が違います。反応しないアプリがあるときだけ切り替えてください。</string>
+    <string name="switch_selection_title">カーソル移動でも反応させる</string>
+    <string name="switch_selection_desc">文字変化を送らずカーソル位置だけ送るアプリ(WebViewなど)向け。ONにすると二重に反応するアプリがあります。</string>
+    <string name="switch_enter_submit_title">送信ボタンを改行として扱う</string>
+    <string name="switch_enter_submit_desc">単一行の入力欄でIMEの送信/検索を押すと、改行は入らず入力欄が空になります。それを改行とみなします。</string>
 </resources>

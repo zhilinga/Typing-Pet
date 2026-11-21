@@ -37,6 +37,15 @@ object Prefs {
     fun getShowShadow(context: Context): Boolean = sp(context).getBoolean("showShadow", true)
     fun setShowShadow(context: Context, value: Boolean) = sp(context).edit().putBoolean("showShadow", value).apply()
 
+    // 文字変化イベントを送らないアプリ向け: カーソル位置の変化で打鍵を推定する
+    // (一部アプリで二重反応することがあるので、既定はOFF)
+    fun getSelectionFallback(context: Context): Boolean = sp(context).getBoolean("selectionFallback", false)
+    fun setSelectionFallback(context: Context, value: Boolean) = sp(context).edit().putBoolean("selectionFallback", value).apply()
+
+    // 単一行入力欄の送信ボタン(入力欄が空になる)を改行として扱う
+    fun getEnterOnSubmit(context: Context): Boolean = sp(context).getBoolean("enterOnSubmit", true)
+    fun setEnterOnSubmit(context: Context, value: Boolean) = sp(context).edit().putBoolean("enterOnSubmit", value).apply()
+
     // 表示位置
     fun getPosX(context: Context): Int = sp(context).getInt("posX", 40)
     fun getPosY(context: Context): Int = sp(context).getInt("posY", 200)

@@ -99,4 +99,11 @@
     <string name="toast_import_failed">Some images couldn\'t be loaded</string>
     <string name="perm_ok">✓ OK</string>
     <string name="perm_set">Set up ›</string>
+    <string name="accessibility_description">Used so the pet can react to typing. It only notices that a text field changed; nothing is saved or sent. Password fields are never read.</string>
+    <string name="label_detect">Input detection compatibility</string>
+    <string name="desc_detect">Apps report typing in different ways. Only change these if some app does not react.</string>
+    <string name="switch_selection_title">React to cursor movement</string>
+    <string name="switch_selection_desc">For apps that only report cursor position and not text changes (e.g. WebView). Some apps may then react twice.</string>
+    <string name="switch_enter_submit_title">Treat the send button as Enter</string>
+    <string name="switch_enter_submit_desc">In a single-line field, the IME send/search key clears the field without inserting a newline. Treat that as Enter.</string>
 </resources>

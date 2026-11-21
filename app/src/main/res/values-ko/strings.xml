@@ -99,4 +99,11 @@
     <string name="toast_import_failed">불러오지 못한 이미지가 있습니다</string>
     <string name="perm_ok">✓ OK</string>
     <string name="perm_set">설정 ›</string>
+    <string name="accessibility_description">펫이 입력에 반응하기 위해 사용합니다. 입력란의 문자가 바뀐 것만 확인하며 내용을 저장하거나 전송하지 않습니다. 비밀번호 입력란은 보지 않습니다.</string>
+    <string name="label_detect">입력 감지 호환 설정</string>
+    <string name="desc_detect">앱마다 입력을 알리는 방식이 다릅니다. 반응하지 않는 앱이 있을 때만 바꿔 주세요.</string>
+    <string name="switch_selection_title">커서 이동에도 반응</string>
+    <string name="switch_selection_desc">문자 변화 대신 커서 위치만 보내는 앱(WebView 등)용. 일부 앱에서는 두 번 반응할 수 있습니다.</string>
+    <string name="switch_enter_submit_title">보내기 버튼을 줄바꿈으로 처리</string>
+    <string name="switch_enter_submit_desc">한 줄 입력란에서 IME 보내기/검색을 누르면 줄바꿈 없이 입력란이 비워집니다. 그것을 줄바꿈으로 봅니다.</string>
 </resources>
