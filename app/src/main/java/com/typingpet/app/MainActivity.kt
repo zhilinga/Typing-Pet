@@ -558,6 +558,18 @@ class MainActivity : Activity() {
             ) { checked ->
                 Prefs.setEnterOnSubmit(this@MainActivity, checked)
             })
+
+            addView(spacer(12))
+            addView(smallLabel(getString(R.string.label_paste_min)))
+            addView(descLabel(getString(R.string.desc_paste_min)))
+            addView(spacer(6))
+            val pasteOptions = listOf(3, 4, 5, 6, 8, 10)
+            val selectedIdx = pasteOptions.indexOf(Prefs.getPasteMinLen(this@MainActivity))
+                .let { if (it < 0) 0 else it }
+            addView(segmented(pasteOptions.map { it.toString() }, selectedIdx) { i ->
+                Prefs.setPasteMinLen(this@MainActivity, pasteOptions[i])
+                renderBasic()
+            })
         })
 
         basicBox.addView(spacer(16))

@@ -116,4 +116,6 @@
     <string name="confirm_restore">今の設定と画像を、バックアップの内容で上書きします。よろしいですか？</string>
     <string name="backup_pick_title">バックアップの保存先</string>
     <string name="restore_pick_title">バックアップファイルを選ぶ</string>
+    <string name="label_paste_min">貼り付けと判定する文字数</string>
+    <string name="desc_paste_min">一度にこれだけの文字が入ったら貼り付けとみなします。小さいと反応しやすいですが、拼音にスペースを入れる入力法では誤反応しやすくなります。</string>
 </resources>

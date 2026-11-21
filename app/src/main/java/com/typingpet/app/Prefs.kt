@@ -46,6 +46,12 @@ object Prefs {
     fun getEnterOnSubmit(context: Context): Boolean = sp(context).getBoolean("enterOnSubmit", true)
     fun setEnterOnSubmit(context: Context, value: Boolean) = sp(context).edit().putBoolean("enterOnSubmit", value).apply()
 
+    // 貼り付けと判定する最小文字数。拼音にスペースを挟む入力法では大きくすると誤反応が減る
+    fun getPasteMinLen(context: Context): Int =
+        sp(context).getInt("pasteMinLen", 3).coerceIn(2, 10)
+    fun setPasteMinLen(context: Context, value: Int) =
+        sp(context).edit().putInt("pasteMinLen", value.coerceIn(2, 10)).apply()
+
     // 表示位置
     fun getPosX(context: Context): Int = sp(context).getInt("posX", 40)
     fun getPosY(context: Context): Int = sp(context).getInt("posY", 200)

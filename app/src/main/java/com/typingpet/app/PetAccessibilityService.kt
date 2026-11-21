@@ -19,12 +19,6 @@ class PetAccessibilityService : AccessibilityService() {
 
     companion object {
         /**
-         * 貼り付けとみなす最小文字数。
-         * 1文字だけの貼り付けは普通の入力と区別できないので対象外。
-         */
-        private const val PASTE_MIN_LEN = 2
-
-        /**
          * 選択範囲を置換する形の貼り付け(何かが消えたと同時に入る)を
          * 貼り付けとみなす文字数。変換確定は普通 1〜4 文字なので、それより明確に多くする。
          */
@@ -40,6 +34,53 @@ class PetAccessibilityService : AccessibilityService() {
          * この時間だけ待って、その間にクリックが来なければ削除とみなす。
          */
         private const val CLEAR_CONFIRM_MS = 220L
+
+        /** 拼音らしさを判定するときに見る、入力位置より前の文字数 */
+        private const val PINYIN_LOOKBEHIND = 24
+    }
+
+    /** 貼り付け判定に使う最小文字数(設定値を反映) */
+    private fun pasteMinLen(): Int = Prefs.getPasteMinLen(this)
+
+    /**
+     * いま入力中の文字列が「拼音の入力途中」らしいか。
+     *
+     * 一部の入力法は拼音を打つときに「字母＋スペース」をまとめて入れるため、
+     * 2文字以上が一度に入った = 貼り付け、と単純に判定すると毎回貼り付けになる。
+     * 入力位置の直前を見て、ラテン小文字とスペースだけが並んでいるなら
+     * 拼音の入力途中と判断して、貼り付け扱いにしない。
+     *
+     * 例: "ni hao " の直後 → 拼音らしい / "Hello world" の直後 → 単語間の空白であり得るが
+     *     大文字や記号が混ざるので拼音とは判定しにくい
+     */
+    private fun looksLikePinyinInput(text: String, insertAt: Int, inserted: String): Boolean {
+        // 今回入った文字に、拼音として不自然なもの(漢字・記号・大文字)が混ざっていたら拼音ではない
+        if (inserted.any { it.isUpperCase() }) return false
+        if (!inserted.all { it.isLetter() || it == ' ' || it == '\u3000' || it == '\'' }) return false
+
+        val from = maxOf(0, insertAt - PINYIN_LOOKBEHIND)
+        val window = text.substring(from, insertAt)
+        if (window.isEmpty()) {
+            // 直前が空 = 入力欄の先頭。1〜3文字のラテン小文字だけなら拼音の打ち始め
+            val core = inserted.trim()
+            return core.isNotEmpty() && core.length <= 3 && core.all { it in 'a'..'z' }
+        }
+
+        // 直前のウィンドウがラテン小文字・スペース・アポストロフィのみで構成されているか
+        val tail = window.takeLast(PINYIN_LOOKBEHIND)
+        val onlyPinyinChars = tail.all {
+            it in 'a'..'z' || it == ' ' || it == '\u3000' || it == '\''
+        }
+        if (!onlyPinyinChars) return false
+
+        // 連続した空白だけをまとめて入れた場合は拼音とは限らない(整形貼り付けの可能性)
+        val insertedTrim = inserted.trim()
+        if (insertedTrim.isEmpty()) return false
+
+        // 英単語を打っているだけの可能性はあるが、この判定は
+        // 「貼り付けと誤認して毎回反応する」のを防ぐことを優先する。
+        // 誤って貼り付けが反応しない場合は、設定のしきい値を下げれば拾える。
+        return true
     }
 
     /** テキスト変化が来ないアプリ向け: 前回のカーソル位置と文字数 */
@@ -149,15 +190,20 @@ class PetAccessibilityService : AccessibilityService() {
         // 貼り付け判定。アクセシビリティイベントに「貼り付け」を示す情報は無いので、
         // 「一度に入った文字数」と「同時に消えた文字数」から推定する。
         //  - 変換確定(拼音→漢字): 拼音が消えて漢字が入る → removed > 0、入るのは数文字
-        //  - 貼り付け:           消さずにまとめて入る   → removed == 0、入るのは2文字以上
+        //  - 貼り付け:           消さずにまとめて入る   → removed == 0、入るのは数文字以上
         //  - 選択範囲を置換して貼り付け: removed > 0 だが入る文字数が明らかに多い
+        //
+        // ただし「拼音の入力中にスペースを挟む」入力法があり、その場合は
+        // 「字母＋スペース」の2文字が毎回まとめて入る。これを貼り付けと誤認しないよう、
+        // 入力中の文字列(直前の数文字＋今回の入力)が拼音らしいときは貼り付けとしない。
         if (watchPaste) {
+            val needLen = pasteMinLen()
             val pasted = if (change.removed == 0) {
-                inserted.length >= PASTE_MIN_LEN
+                inserted.length >= needLen
             } else {
-                inserted.length >= PASTE_REPLACE_LEN
+                inserted.length >= maxOf(PASTE_REPLACE_LEN, needLen)
             }
-            if (pasted) {
+            if (pasted && !looksLikePinyinInput(after, change.start, inserted)) {
                 OverlayService.reactPaste()
                 return
             }

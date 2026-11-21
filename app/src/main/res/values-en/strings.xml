@@ -116,4 +116,6 @@
     <string name="confirm_restore">This overwrites your current settings and images with the backup. Continue?</string>
     <string name="backup_pick_title">Where to save the backup</string>
     <string name="restore_pick_title">Choose a backup file</string>
+    <string name="label_paste_min">Characters to count as paste</string>
+    <string name="desc_paste_min">That many characters arriving at once is treated as a paste. Smaller reacts more easily, but IMEs that insert spaces while typing pinyin will false-trigger more often.</string>
 </resources>

@@ -116,4 +116,6 @@
     <string name="confirm_restore">将用备份内容覆盖当前的设置和图片。确定吗？</string>
     <string name="backup_pick_title">选择备份保存位置</string>
     <string name="restore_pick_title">选择备份文件</string>
+    <string name="label_paste_min">判定为粘贴的字数</string>
+    <string name="desc_paste_min">一次进来这么多字就算作粘贴。设得小更容易触发，但打字时会插入空格的拼音输入法也更容易误触发。</string>
 </resources>
