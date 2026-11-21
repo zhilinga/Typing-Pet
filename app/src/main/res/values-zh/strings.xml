@@ -120,5 +120,7 @@
     <string name="desc_paste_min">一次进来这么多字就算作粘贴。设得小更容易触发，但打字时会插入空格的拼音输入法也更容易误触发。</string>
     <string name="key_copy">📄 复制时</string>
     <string name="btn_add_copy_trigger">＋ 📄 复制的反应</string>
-    <string name="desc_copy_limit">※ 复制靠「选中文字后又收回选区」来判定。Android 10 起不允许读取剪贴板，所以无法从粘贴那一侧检测。</string>
+    <string name="desc_copy_limit">※ 复制通过「检测你按了选区菜单里的复制按钮」来判定。不读取剪贴板内容（Android 10 起普通应用也无法读取）。</string>
+    <string name="switch_copy_selection_title">取消选区也算作复制</string>
+    <string name="switch_copy_selection_desc">开启后，不用菜单直接结束选区也会当作复制。快速滑动选择时容易误触发。</string>
 </resources>

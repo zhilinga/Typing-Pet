@@ -52,6 +52,13 @@ object Prefs {
     fun setPasteMinLen(context: Context, value: Int) =
         sp(context).edit().putInt("pasteMinLen", value.coerceIn(2, 10)).apply()
 
+    // コピーを「選択メニューのコピーボタン」で判定する(既定)。
+    // OFF にすると「選択が畳まれた」形から推定する補助判定も使う(誤判定が増える)
+    fun getCopyBySelection(context: Context): Boolean =
+        sp(context).getBoolean("copyBySelection", false)
+    fun setCopyBySelection(context: Context, value: Boolean) =
+        sp(context).edit().putBoolean("copyBySelection", value).apply()
+
     // 表示位置
     fun getPosX(context: Context): Int = sp(context).getInt("posX", 40)
     fun getPosY(context: Context): Int = sp(context).getInt("posY", 200)

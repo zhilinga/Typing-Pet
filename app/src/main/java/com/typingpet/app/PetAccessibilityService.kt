@@ -37,6 +37,32 @@ class PetAccessibilityService : AccessibilityService() {
 
         /** 拼音らしさを判定するときに見る、入力位置より前の文字数 */
         private const val PINYIN_LOOKBEHIND = 24
+
+        /** 補助判定でコピーとみなすのに必要な、選択の最低継続時間(ミリ秒) */
+        private const val COPY_MIN_SELECT_MS = 300L
+
+        /** メニュー項目のラベルとみなす最大長。これを超える文字列は本文と判断する */
+        private const val COPY_LABEL_MAX_LEN = 12
+
+        /**
+         * 「コピー」を表すラベル。端末の言語によって変わるので主要言語ぶんを並べる。
+         * 比較時は小文字化して前方一致で見る(「コピー」と「コピー...」の揺れを吸収)。
+         */
+        private val COPY_LABELS = listOf(
+            "复制", "复制链接",           // 中国語(簡体字)
+            "複製", "拷貝",               // 中国語(繁体字)
+            "コピー",                      // 日本語
+            "복사",                        // 韓国語
+            "copy"                         // 英語
+        )
+
+        /** 「貼り付け」を表すラベル */
+        private val PASTE_LABELS = listOf(
+            "粘贴", "粘貼",               // 中国語
+            "貼り付け", "貼付",           // 日本語
+            "붙여넣기",                    // 韓国語
+            "paste"                        // 英語
+        )
     }
 
     /** 貼り付け判定に使う最小文字数(設定値を反映) */
@@ -87,6 +113,9 @@ class PetAccessibilityService : AccessibilityService() {
     private var lastSelStart = -1
     private var lastSelEnd = -1
     private var lastTextLength = -1
+
+    /** 範囲選択が始まった時刻。コピーの補助判定に使う */
+    private var rangeSelectedAt = 0L
 
     /** 最後に「内容が空でない入力欄」を見た時刻。送信によるクリア判定に使う */
     private var lastNonEmptyAt = 0L
@@ -283,20 +312,24 @@ class PetAccessibilityService : AccessibilityService() {
         val isRange = end > start
 
         // ---------- コピーの検知 ----------
-        // Android 10 以降、バックグラウンドのアプリはクリップボードを読めない。
-        // そのため「コピーされたこと」を直接は知れない。代わりに選択の形を見る:
-        //   長押しで文字を選ぶ → 選択が「範囲あり」になる
-        //   「コピー」を押す   → 選択が畳まれてキャレットに戻ることが多い
-        // この「範囲あり → 範囲なし」の遷移を、コピーとみなす。
-        // 選択の大きさだけを見て、文字の中身は一切読まない。
-        if (watchCopy && wasRange && !isRange) {
+        // 本筋は「選択メニューのコピーボタンが押された」ことをクリックイベントで見ること
+        // (onClicked 側で処理する)。ここでは設定でONのときだけ、
+        // 「選択が畳まれた」形からの推定を補助として使う。
+        //
+        // 補助を使うと、選択をやめただけの場合もコピーと誤判定しやすい。
+        // そのため既定では無効にしてあり、必要な人だけ有効化する。
+        if (watchCopy && Prefs.getCopyBySelection(this) && wasRange && !isRange) {
             // 文字が減っていれば切り取り。減っていなければコピー。
             val shortened = prevLen >= 0 && lenNow >= 0 && lenNow < prevLen
-            if (!shortened) {
+            // 選択が長く続いた場合だけ拾う(素早いスクロール選択を除外)
+            if (!shortened && now - rangeSelectedAt >= COPY_MIN_SELECT_MS) {
                 OverlayService.reactCopy()
                 return
             }
         }
+
+        // 範囲選択が始まった時刻を記録(補助判定用)
+        if (isRange && !wasRange) rangeSelectedAt = now
 
         // 以下はカーソル移動からの入力推定。設定でONのときだけ
         if (!fallback) return
@@ -334,6 +367,27 @@ class PetAccessibilityService : AccessibilityService() {
      * 手で全消しした場合と区別しにくい点は残る(そのため短い時間窓で判定する)。
      */
     private fun onClicked(event: AccessibilityEvent) {
+        // ---------- テキスト選択メニューの「コピー」「貼り付け」を検知 ----------
+        // 文字を選ぶとフローティングツールバーが出て、そこに「コピー」「貼り付け」がある。
+        // それを押すと TYPE_VIEW_CLICKED が来て、イベントにラベルの文字列が入っている。
+        // クリップボードは読めないが、「ユーザーがコピーを押した」ことはこれで直接分かる。
+        val actionLabel = clickedActionLabel(event)
+        if (actionLabel != null) {
+            if (isCopyLabel(actionLabel)) {
+                if (OverlayService.watchCopy) {
+                    cancelPendingDelete()
+                    OverlayService.reactCopy()
+                    return
+                }
+            } else if (isPasteLabel(actionLabel)) {
+                if (OverlayService.watchPaste) {
+                    OverlayService.reactPaste()
+                    return
+                }
+            }
+        }
+
+        // ---------- 送信ボタンで入力欄が空になる形の改行 ----------
         if (!OverlayService.watchEnter) return
         if (!Prefs.getEnterOnSubmit(this)) return
         if (event.isPassword) return
@@ -361,7 +415,39 @@ class PetAccessibilityService : AccessibilityService() {
 
     private fun anySpecialWatched(): Boolean =
         OverlayService.watchDelete || OverlayService.watchSpace ||
-            OverlayService.watchEnter || OverlayService.watchPaste
+            OverlayService.watchEnter || OverlayService.watchPaste ||
+            OverlayService.watchCopy
+
+    /**
+     * クリックされた要素のラベルを取り出す。
+     * テキスト選択メニューの項目は、contentDescription か text のどちらかに入る。
+     * どちらも無ければ判定できないので null を返す。
+     */
+    private fun clickedActionLabel(event: AccessibilityEvent): String? {
+        val cd = event.contentDescription?.toString()?.trim()
+        if (!cd.isNullOrEmpty()) return cd
+        val tx = event.text?.joinToString(" ")?.trim()
+        if (!tx.isNullOrEmpty()) return tx
+        return null
+    }
+
+    /**
+     * 「コピー」ボタンらしいラベルか。
+     * 端末の言語によって表示が変わるため、主要な言語の表記を並べておく。
+     * 長い文字列(本文そのもの)を誤って拾わないよう、短いラベルだけを対象にする。
+     */
+    private fun isCopyLabel(label: String): Boolean {
+        if (label.length > COPY_LABEL_MAX_LEN) return false
+        val normalized = label.lowercase().trim()
+        return COPY_LABELS.any { normalized == it || normalized.startsWith(it) }
+    }
+
+    /** 「貼り付け」ボタンらしいラベルか */
+    private fun isPasteLabel(label: String): Boolean {
+        if (label.length > COPY_LABEL_MAX_LEN) return false
+        val normalized = label.lowercase().trim()
+        return PASTE_LABELS.any { normalized == it || normalized.startsWith(it) }
+    }
 
     /** 入力欄の文字数を覚えておく(送信クリア判定用) */
     private fun rememberTextLength(len: Int, isPassword: Boolean) {

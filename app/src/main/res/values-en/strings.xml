@@ -120,5 +120,7 @@
     <string name="desc_paste_min">That many characters arriving at once is treated as a paste. Smaller reacts more easily, but IMEs that insert spaces while typing pinyin will false-trigger more often.</string>
     <string name="key_copy">📄 When copying</string>
     <string name="btn_add_copy_trigger">+ Add reaction for 📄 copy</string>
-    <string name="desc_copy_limit">Note: copying is detected from the selection collapsing after you select text and copy. Android 10+ forbids reading the clipboard, so it cannot be detected from the paste side.</string>
+    <string name="desc_copy_limit">Note: copying is detected by seeing you press the Copy button in the selection menu. The clipboard itself is never read (Android 10+ forbids that for ordinary apps).</string>
+    <string name="switch_copy_selection_title">Also treat selection collapse as copy</string>
+    <string name="switch_copy_selection_desc">When ON, finishing a selection without using the menu also counts as a copy. Fast scroll-selection can then false-trigger.</string>
 </resources>

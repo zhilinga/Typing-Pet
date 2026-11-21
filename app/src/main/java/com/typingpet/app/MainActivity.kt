@@ -570,6 +570,15 @@ class MainActivity : Activity() {
                 Prefs.setPasteMinLen(this@MainActivity, pasteOptions[i])
                 renderBasic()
             })
+
+            addView(spacer(12))
+            addView(switchRow(
+                getString(R.string.switch_copy_selection_title),
+                getString(R.string.switch_copy_selection_desc),
+                Prefs.getCopyBySelection(this@MainActivity)
+            ) { checked ->
+                Prefs.setCopyBySelection(this@MainActivity, checked)
+            })
         })
 
         basicBox.addView(spacer(16))

@@ -120,5 +120,7 @@
     <string name="desc_paste_min">一度にこれだけの文字が入ったら貼り付けとみなします。小さいと反応しやすいですが、拼音にスペースを入れる入力法では誤反応しやすくなります。</string>
     <string name="key_copy">📄 コピーしたとき</string>
     <string name="btn_add_copy_trigger">＋ 📄 コピーの反応を追加</string>
-    <string name="desc_copy_limit">※ コピーは「文字を選択してコピーした」ときの選択の戻りで判定します。Android 10 以降はクリップボードの中身を読めないため、貼り付け側の操作からは検知できません。</string>
+    <string name="desc_copy_limit">※ コピーは「選択メニューのコピーボタン」を押したことを見て判定します。クリップボードの中身は読みません（Android 10 以降、一般のアプリは読めません）。</string>
+    <string name="switch_copy_selection_title">選択のたたみでもコピーとみなす</string>
+    <string name="switch_copy_selection_desc">ONにすると、選択メニューを使わずに選択を終えた場合もコピーとして反応します。素早いスクロール選択でも誤反応しやすくなります。</string>
 </resources>
