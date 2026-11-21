@@ -201,7 +201,7 @@ class PetAccessibilityService : AccessibilityService() {
         if (Prefs.getDebugLog(this) &&
             (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
                 event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+                event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED)
         ) {
             recordDebugEvent(event)
         }
@@ -229,6 +229,11 @@ class PetAccessibilityService : AccessibilityService() {
             if (cd.isNotEmpty()) sb.append(" cd=").append(cd.take(30))
             val tx = event.text?.joinToString("|") ?: ""
             if (tx.isNotEmpty()) sb.append(" text=").append(tx.take(30))
+            // 選択範囲の位置。コピー判定の手がかりになる
+            if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+                sb.append(" sel=[").append(event.fromIndex).append(",")
+                    .append(event.toIndex).append(")")
+            }
 
             // ノード側のラベルも見る
             val src = try {
@@ -267,28 +272,10 @@ class PetAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString()?.lowercase() ?: ""
         val cls = event.className?.toString()?.lowercase() ?: ""
 
-        // QQ など自前メニューのアプリでは、コピー後に SystemUI が
-        // 「コピーしました」の小さな表示を別ウィンドウとして出す。
-        // 実測(Android 17 / HyperOS)では
-        //   pkg=com.android.systemui  cls=android.view.View
-        // として TYPE_WINDOW_STATE_CHANGED が来る。
-        // これが今のところ、クリップボードを読まずにコピーを確定できる唯一の合図。
-        if (isSystemUiOverlay(pkg, cls)) {
-            // SystemUI のウィンドウは他の用途でも出るので、
-            // 「直前に選択メニュー操作があった」ことを条件にする。
-            val now = System.currentTimeMillis()
-            if (recentCopyContext && now - lastCopyContextAt <= COPY_CONTEXT_WINDOW_MS) {
-                if (now - lastClipboardOverlayAt >= CLIPBOARD_OVERLAY_COOLDOWN_MS) {
-                    lastClipboardOverlayAt = now
-                    recentCopyContext = false
-                    cancelPendingDelete()
-                    OverlayService.reactCopy()
-                }
-            }
-            return
-        }
-
-        // 明示的にクリップボード名を持つウィンドウが来る端末向けの従来判定
+        // 明示的にクリップボード名を持つウィンドウが来る端末向け。
+        // 実測では com.android.systemui の LinearLayout は
+        // ステータスバーの通信速度表示であり、コピーとは無関係だった。
+        // そのため「パッケージが systemui」というだけでは判定しない。
         val hint = pkg + " " + cls
         if (CLIPBOARD_WINDOW_HINTS.any { hint.contains(it) }) {
             val now = System.currentTimeMillis()
@@ -297,13 +284,6 @@ class PetAccessibilityService : AccessibilityService() {
             cancelPendingDelete()
             OverlayService.reactCopy()
         }
-    }
-
-    /** SystemUI が出す小さな表示(コピー完了のトーストなど)か */
-    private fun isSystemUiOverlay(pkg: String, cls: String): Boolean {
-        if (pkg != "com.android.systemui") return false
-        // クラス名は android.view.View や LinearLayout など様々。パッケージだけで判断する。
-        return true
     }
 
     /**
