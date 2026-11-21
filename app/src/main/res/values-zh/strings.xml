@@ -130,6 +130,8 @@
     <string name="debug_empty">还没有记录。开启后去试着复制一下。</string>
     <string name="debug_cleared">已清空记录</string>
     <string name="btn_share_debug">分享记录</string>
-    <string name="switch_ime_title">按输入法候选栏触发</string>
-    <string name="switch_ime_desc">中文等输入法在确认前不往输入框写字符，开启后打键也会触发反应。不读取输入内容。</string>
+    <string name="switch_ime_title">把候选词上屏当作打键</string>
+    <string name="switch_ime_desc">检测输入法的打键；紧接着输入框出现字符时，判定为「选了候选词」。打键刚结束时不做粘贴判定，因此候选上屏也不会被误判成粘贴。不读取输入内容。</string>
+    <string name="label_multi_delay">多字触发的间隔</string>
+    <string name="desc_multi_delay">一次进来多个字（例如选定候选词）时，第 2 个字起每次间隔多少毫秒触发。设为 0 就几乎同时。</string>
 </resources>

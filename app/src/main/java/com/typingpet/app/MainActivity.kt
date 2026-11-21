@@ -568,6 +568,20 @@ class MainActivity : Activity() {
                 Prefs.setImeWatching(this@MainActivity, checked)
             })
 
+            // 一度に複数の文字が入ったとき(候補の確定など)の間隔
+            addView(spacer(12))
+            addView(smallLabel(getString(R.string.label_multi_delay)))
+            addView(descLabel(getString(R.string.desc_multi_delay)))
+            addView(spacer(6))
+            val multiDelayOptions = listOf(0, 60, 120, 200, 300, 500)
+            val multiDelayIdx = multiDelayOptions
+                .indexOf(Prefs.getMultiCharDelayMs(this@MainActivity))
+                .let { if (it < 0) 2 else it }
+            addView(segmented(multiDelayOptions.map { it.toString() }, multiDelayIdx) { i ->
+                Prefs.setMultiCharDelayMs(this@MainActivity, multiDelayOptions[i])
+                renderBasic()
+            })
+
             addView(spacer(12))
             addView(smallLabel(getString(R.string.label_paste_min)))
             addView(descLabel(getString(R.string.desc_paste_min)))

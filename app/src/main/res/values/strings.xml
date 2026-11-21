@@ -130,6 +130,8 @@
     <string name="debug_empty">まだ記録がありません。ONにしてから、コピーなどを試してみてください。</string>
     <string name="debug_cleared">記録を消しました</string>
     <string name="btn_share_debug">記録を共有</string>
-    <string name="switch_ime_title">入力法の候補バーでも反応させる</string>
-    <string name="switch_ime_desc">中国語など、確定するまで入力欄に文字が入らない入力法でも、打鍵に反応するようになります。入力内容は読みません。</string>
+    <string name="switch_ime_title">候補の確定を打鍵として扱う</string>
+    <string name="switch_ime_desc">入力法の打鍵を検知し、その直後に入力欄へ文字が入ったら「候補を選んで確定した」と判断します。打鍵の直後は貼り付け判定をしないので、候補の確定が貼り付けとして反応することもありません。入力内容は読みません。</string>
+    <string name="label_multi_delay">複数文字の間隔</string>
+    <string name="desc_multi_delay">一度に複数の文字が入ったとき（候補の確定など）、2文字目以降を何ミリ秒ずつずらして反応させるか。0 にするとほぼ同時になります。</string>
 </resources>

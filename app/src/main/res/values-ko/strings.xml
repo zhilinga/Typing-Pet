@@ -130,6 +130,8 @@
     <string name="debug_empty">아직 기록이 없습니다. ON으로 바꾸고 복사 등을 시도해 보세요.</string>
     <string name="debug_cleared">기록을 지웠습니다</string>
     <string name="btn_share_debug">기록 공유</string>
-    <string name="switch_ime_title">입력기 후보 바에도 반응</string>
-    <string name="switch_ime_desc">중국어처럼 확정 전까지 입력란에 문자가 들어가지 않는 입력기에서도 타건에 반응합니다. 입력 내용은 읽지 않습니다.</string>
+    <string name="switch_ime_title">후보 확정을 타건으로 처리</string>
+    <string name="switch_ime_desc">입력기의 타건을 감지해, 곧바로 입력란에 문자가 들어오면 후보를 선택해 확정한 것으로 판단합니다. 타건 직후에는 붙여넣기 판정을 하지 않으므로 후보 확정이 붙여넣기로 오인되지 않습니다. 입력 내용은 읽지 않습니다.</string>
+    <string name="label_multi_delay">여러 글자 사이 간격</string>
+    <string name="desc_multi_delay">여러 글자가 한꺼번에 들어올 때(후보 확정 등), 두 번째 글자부터 몇 밀리초씩 늦춰 반응할지. 0이면 거의 동시에 반응합니다.</string>
 </resources>

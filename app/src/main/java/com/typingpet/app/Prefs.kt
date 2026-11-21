@@ -60,13 +60,22 @@ object Prefs {
         sp(context).edit().putBoolean("copyBySelection", value).apply()
 
     /**
-     * 入力法の候補バーの更新を「打鍵」として扱うか。
+     * 入力法の打鍵を検知して「候補を選んで確定した」を判定するか。
      * 中国語入力など、確定するまで入力欄に文字が入らない場合に必要。
      */
     fun getImeWatching(context: Context): Boolean =
         sp(context).getBoolean("imeWatching", true)
     fun setImeWatching(context: Context, value: Boolean) =
         sp(context).edit().putBoolean("imeWatching", value).apply()
+
+    /**
+     * 候補の確定などで一度に複数の文字が入ったとき、
+     * 2文字目以降を何ミリ秒ずつずらして反応させるか。
+     */
+    fun getMultiCharDelayMs(context: Context): Int =
+        sp(context).getInt("multiCharDelayMs", 120).coerceIn(0, 600)
+    fun setMultiCharDelayMs(context: Context, value: Int) =
+        sp(context).edit().putInt("multiCharDelayMs", value.coerceIn(0, 600)).apply()
 
     // 検知のデバッグ記録を取るか(コピーが反応しないときの調査用)
     fun getDebugLog(context: Context): Boolean =

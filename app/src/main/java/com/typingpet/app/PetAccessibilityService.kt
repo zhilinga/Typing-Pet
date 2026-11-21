@@ -57,6 +57,14 @@ class PetAccessibilityService : AccessibilityService() {
          */
         private const val IME_EVENT_BURST_MS = 260L
 
+        /**
+         * 入力法の打鍵から、この時間内に入力欄へ文字が入ったら
+         * 「候補を選んで確定した」とみなす。
+         * 打鍵の直後に貼り付けは起きない(選択メニューを開いて押すため)ので、
+         * この時間窓を「確定」と「貼り付け」の切り分けに使える。
+         */
+        private const val IME_COMMIT_WINDOW_MS = 1500L
+
         /** 入力欄フォーカスの確認結果をキャッシュする時間 */
         private const val EDIT_FOCUS_CACHE_MS = 400L
 
@@ -148,6 +156,9 @@ class PetAccessibilityService : AccessibilityService() {
 
     /** 直近に入力法のイベントを処理した時刻(連続分をまとめるため) */
     private var lastImeEventAt = 0L
+
+    /** 直近に入力法の打鍵があった時刻。直後の「出字」を候補の確定とみなす */
+    private var lastImeKeyAt = 0L
 
     /** 端末の入力法パッケージ一覧(一度だけ取得する) */
     private var imePackagesCache: Set<String>? = null
@@ -345,7 +356,11 @@ class PetAccessibilityService : AccessibilityService() {
         }
 
         lastImeEventAt = now
-        OverlayService.reactImeKey()
+        // ここでは反応させない。打鍵があったことだけ覚えておき、
+        // 直後に入力欄へ文字が入ったら「候補を選んで確定した」と判断する。
+        // 直接反応させるとキーを押しただけで反応してしまい、
+        // 貼り付け判定とも競合する。
+        lastImeKeyAt = now
         return true
     }
 
@@ -456,23 +471,35 @@ class PetAccessibilityService : AccessibilityService() {
 
         val inserted = after.substring(change.start, change.end)
 
+        // 拼音の入力途中か。入力法が「字母＋スペース」をまとめて入れる形への対策
+        val pinyinish = looksLikePinyinInput(after, change.start, inserted)
+
+        // 入力法の打鍵の直後か
+        val imeRecent = Prefs.getImeWatching(this) &&
+            lastImeKeyAt > 0 &&
+            System.currentTimeMillis() - lastImeKeyAt <= IME_COMMIT_WINDOW_MS
+
+        // 打鍵の直後に漢字・仮名・ハングルなどが入った = 候補を選んで確定した。
+        // ASCII の文字なら英字の入力途中なので、確定とはみなさない。
+        val candidateCommit = imeRecent && inserted.any { it.code >= 0x2E80 }
+
         // 貼り付け判定。アクセシビリティイベントに「貼り付け」を示す情報は無いので、
         // 「一度に入った文字数」と「同時に消えた文字数」から推定する。
         //  - 変換確定(拼音→漢字): 拼音が消えて漢字が入る → removed > 0、入るのは数文字
         //  - 貼り付け:           消さずにまとめて入る   → removed == 0、入るのは数文字以上
         //  - 選択範囲を置換して貼り付け: removed > 0 だが入る文字数が明らかに多い
         //
-        // ただし「拼音の入力中にスペースを挟む」入力法があり、その場合は
-        // 「字母＋スペース」の2文字が毎回まとめて入る。これを貼り付けと誤認しないよう、
-        // 入力中の文字列(直前の数文字＋今回の入力)が拼音らしいときは貼り付けとしない。
-        if (watchPaste) {
+        // 入力法の打鍵の直後に漢字などが入った場合(candidateCommit)は候補の確定とみなして、
+        // 貼り付け判定をしない。
+        // こうしないと候補の確定が貼り付けとして反応してしまう。
+        if (watchPaste && !candidateCommit) {
             val needLen = pasteMinLen()
             val pasted = if (change.removed == 0) {
                 inserted.length >= needLen
             } else {
                 inserted.length >= maxOf(PASTE_REPLACE_LEN, needLen)
             }
-            if (pasted && !looksLikePinyinInput(after, change.start, inserted)) {
+            if (pasted && !pinyinish) {
                 OverlayService.reactPaste()
                 return
             }
@@ -497,7 +524,27 @@ class PetAccessibilityService : AccessibilityService() {
 
         // 入力位置の直前数文字(登録文字の最大長ぶん)だけを切り出して各キャラに渡す(保存・送信はしない)
         val winStart = maxOf(0, change.start - (maxLen - 1))
-        OverlayService.reactText(after.substring(winStart, change.end), change.start - winStart)
+        val window = after.substring(winStart, change.end)
+        val newFrom = change.start - winStart
+
+        // 一度に入った文字の数だけ反応させる。
+        // 例: 候補から「你好」を選ぶと 2 回ぶん表情が進む。
+        //
+        // ただし拼音の入力途中のように「英小文字＋空白」がまとめて入る場合は、
+        // それは打鍵1回ぶんなので 1 回だけにする。
+        val typingLetters = inserted.isNotEmpty() && inserted.all {
+            it in 'a'..'z' || it == ' ' || it == '\u3000' || it == '\''
+        }
+        val added = inserted.count { it != '\n' && it != '\r' }
+        val times = if (typingLetters) 1 else added.coerceAtLeast(1)
+        val delay = Prefs.getMultiCharDelayMs(this)
+
+        OverlayService.reactText(window, newFrom)
+        for (i in 1 until times) {
+            // 2文字目以降は設定した間隔だけずらす(0 ならほぼ同時)
+            val post = Runnable { OverlayService.reactText(window, newFrom) }
+            clearHandler.postDelayed(post, delay * i)
+        }
     }
 
     // ---------- 文字変化を送らないアプリ向け: カーソル位置の変化で打鍵を推定 ----------

@@ -130,6 +130,8 @@
     <string name="debug_empty">No records yet. Turn this on, then try copying.</string>
     <string name="debug_cleared">Log cleared</string>
     <string name="btn_share_debug">Share log</string>
-    <string name="switch_ime_title">React to the IME candidate bar</string>
-    <string name="switch_ime_desc">Makes typing react even with IMEs (e.g. Chinese) that do not put characters into the field until confirmation. Input content is never read.</string>
+    <string name="switch_ime_title">Treat candidate commits as key presses</string>
+    <string name="switch_ime_desc">Watches the IME for key presses; when text lands in the field right after, it counts as choosing a candidate. Paste detection is skipped right after a key press, so a candidate commit is never mistaken for a paste. Input content is never read.</string>
+    <string name="label_multi_delay">Delay between characters</string>
+    <string name="desc_multi_delay">When several characters arrive at once (e.g. picking a candidate), how many milliseconds to stagger the 2nd and later reactions. 0 makes them almost simultaneous.</string>
 </resources>
