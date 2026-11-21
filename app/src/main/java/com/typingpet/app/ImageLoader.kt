@@ -158,31 +158,34 @@ object ImageLoader {
     @Suppress("NewApi")
     private fun loadModern(context: Context, uri: Uri, reqPx: Int): PetFrame? {
         val cr = context.contentResolver
+        val source = ImageDecoder.createSource(cr, uri)
 
-        // まずヘッダだけ読んで元の大きさを知る
-        val header = ImageDecoder.decodeHeader(ImageDecoder.createSource(cr, uri))
-        val sw = header.size.width
-        val sh = header.size.height
-        if (sw <= 0 || sh <= 0) return null
-
-        val longest = maxOf(sw, sh)
-        val target = if (reqPx > 0 && longest > reqPx) reqPx else longest
-        val tw = (sw.toLong() * target / longest).toInt().coerceAtLeast(1)
-        val th = (sh.toLong() * target / longest).toInt().coerceAtLeast(1)
-
-        var decodedW = tw
-        var decodedH = th
-        val drawable = ImageDecoder.decodeDrawable(ImageDecoder.createSource(cr, uri)) { decoder, _, _ ->
-            decoder.setTargetSize(tw, th)
+        // 目标尺寸在解码回调里算：那里能拿到原始宽高，且能直接 setTargetSize
+        val drawable = ImageDecoder.decodeDrawable(source) { decoder, info, _ ->
+            val sw = info.size.width
+            val sh = info.size.height
+            if (sw > 0 && sh > 0 && reqPx > 0) {
+                val longest = maxOf(sw, sh)
+                if (longest > reqPx) {
+                    val tw = (sw.toLong() * reqPx / longest).toInt().coerceAtLeast(1)
+                    val th = (sh.toLong() * reqPx / longest).toInt().coerceAtLeast(1)
+                    decoder.setTargetSize(tw, th)
+                }
+            }
             // ソフトウェアビットマップにしておく(縮小描画とプレビュー生成で扱いやすい)
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-            decodedW = tw
-            decodedH = th
         }
+
+        val dw = drawable.intrinsicWidth
+        val dh = drawable.intrinsicHeight
 
         return when (drawable) {
             is BitmapDrawable -> drawable.bitmap?.let { StaticFrame(it) }
-            else -> AnimatedFrame.create(drawable, decodedW, decodedH)
+            else -> AnimatedFrame.create(
+                drawable,
+                if (dw > 0) dw else 1,
+                if (dh > 0) dh else 1
+            )
         }
     }
 

@@ -18,10 +18,17 @@ import android.view.View
  * 描画先の View を Callback として渡す。
  */
 class AnimatedFrame private constructor(
-    private val drawable: AnimatedImageDrawable,
+    private val rawDrawable: Drawable,
     override val width: Int,
     override val height: Int
 ) : PetFrame {
+
+    /**
+     * 型を Drawable で受けて中身だけ AnimatedImageDrawable として使う。
+     * こうしておくと、API 28 未満でこのクラスが読み込まれても
+     * 存在しないクラスを解決しにいかない。
+     */
+    private val drawable: AnimatedImageDrawable get() = rawDrawable as AnimatedImageDrawable
 
     private val bounds = Rect()
     private var host: View? = null
