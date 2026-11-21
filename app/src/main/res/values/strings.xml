@@ -106,4 +106,14 @@
     <string name="switch_selection_desc">文字変化を送らずカーソル位置だけ送るアプリ(WebViewなど)向け。ONにすると二重に反応するアプリがあります。</string>
     <string name="switch_enter_submit_title">送信ボタンを改行として扱う</string>
     <string name="switch_enter_submit_desc">単一行の入力欄でIMEの送信/検索を押すと、改行は入らず入力欄が空になります。それを改行とみなします。</string>
+    <string name="label_backup">バックアップ</string>
+    <string name="desc_backup">キャラ・イラスト・設定をまとめて1つのファイルに保存できます。機種変更や入れ直しの前にどうぞ。</string>
+    <string name="btn_backup_export">バックアップを保存</string>
+    <string name="btn_backup_import">バックアップから復元</string>
+    <string name="toast_backup_ok">バックアップしました（画像 %1$d 枚）</string>
+    <string name="toast_restore_ok">復元しました（画像 %1$d 枚）</string>
+    <string name="toast_backup_failed">失敗しました: %1$s</string>
+    <string name="confirm_restore">今の設定と画像を、バックアップの内容で上書きします。よろしいですか？</string>
+    <string name="backup_pick_title">バックアップの保存先</string>
+    <string name="restore_pick_title">バックアップファイルを選ぶ</string>
 </resources>

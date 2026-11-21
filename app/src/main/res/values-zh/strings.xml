@@ -106,4 +106,14 @@
     <string name="switch_selection_desc">适用于只上报光标位置、不上报文字变化的应用（如 WebView）。开启后部分应用可能重复触发。</string>
     <string name="switch_enter_submit_title">把发送键当作回车</string>
     <string name="switch_enter_submit_desc">单行输入框里按输入法的发送/搜索时，不会插入换行而是清空输入框。把这种情况视为回车。</string>
+    <string name="label_backup">备份</string>
+    <string name="desc_backup">把角色、插画和设置打包保存成一个文件。换手机或重装之前建议先备份。</string>
+    <string name="btn_backup_export">保存备份</string>
+    <string name="btn_backup_import">从备份还原</string>
+    <string name="toast_backup_ok">已备份（%1$d 张图片）</string>
+    <string name="toast_restore_ok">已还原（%1$d 张图片）</string>
+    <string name="toast_backup_failed">失败：%1$s</string>
+    <string name="confirm_restore">将用备份内容覆盖当前的设置和图片。确定吗？</string>
+    <string name="backup_pick_title">选择备份保存位置</string>
+    <string name="restore_pick_title">选择备份文件</string>
 </resources>

@@ -562,6 +562,25 @@ class MainActivity : Activity() {
 
         basicBox.addView(spacer(16))
 
+        // バックアップ(キャラ・イラスト・設定をまとめて保存/復元)
+        basicBox.addView(sectionCard {
+            addView(smallLabel(getString(R.string.label_backup)))
+            addView(descLabel(getString(R.string.desc_backup)))
+            addView(spacer(10))
+
+            addView(Button(this@MainActivity).apply {
+                text = getString(R.string.btn_backup_export)
+                setOnClickListener { startBackupExport() }
+            })
+            addView(spacer(8))
+            addView(Button(this@MainActivity).apply {
+                text = getString(R.string.btn_backup_import)
+                setOnClickListener { confirmRestore() }
+            })
+        })
+
+        basicBox.addView(spacer(16))
+
         basicBox.addView(sectionCard {
             addView(smallLabel(getString(R.string.label_icon_section)))
             addView(descLabel(getString(R.string.desc_icon_section)))
@@ -1119,6 +1138,86 @@ class MainActivity : Activity() {
         startActivityForResult(imagePickerIntent(multiple = true), REQ_PICK)
     }
 
+    // ---------- バックアップ ----------
+
+    private val REQ_BACKUP_SAVE = 500
+    private val REQ_BACKUP_OPEN = 501
+
+    /** 保存先を選んでもらう。既定のファイル名を提案する */
+    private fun startBackupExport() {
+        try {
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/zip"
+                putExtra(Intent.EXTRA_TITLE, Backup.suggestedFileName())
+            }
+            startActivityForResult(
+                Intent.createChooser(intent, getString(R.string.backup_pick_title)),
+                REQ_BACKUP_SAVE
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.toast_backup_failed, e.message ?: "?"), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** 復元は今の内容を上書きするので、先に確認する */
+    private fun confirmRestore() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.btn_backup_import))
+            .setMessage(getString(R.string.confirm_restore))
+            .setPositiveButton(getString(R.string.btn_ok)) { _, _ -> startBackupImport() }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun startBackupImport() {
+        try {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/octet-stream"))
+            }
+            startActivityForResult(
+                Intent.createChooser(intent, getString(R.string.restore_pick_title)),
+                REQ_BACKUP_OPEN
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.toast_backup_failed, e.message ?: "?"), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** 書き出し・読み戻しの結果を受けて画面を作り直す */
+    private fun onBackupResult(requestCode: Int, data: Intent?) {
+        val uri = data?.data
+        if (uri == null) return
+
+        val result = if (requestCode == REQ_BACKUP_SAVE) {
+            Backup.export(this, uri)
+        } else {
+            Backup.import(this, uri)
+        }
+
+        if (result.ok) {
+            thumbCache.clear()
+            if (requestCode == REQ_BACKUP_OPEN) {
+                // 設定を読み直して画面に反映する
+                recreate()
+            }
+            val msg = if (requestCode == REQ_BACKUP_SAVE) {
+                getString(R.string.toast_backup_ok, result.imageCount)
+            } else {
+                getString(R.string.toast_restore_ok, result.imageCount)
+            }
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(
+                this,
+                getString(R.string.toast_backup_failed, result.message),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     // ---------- ホーム画面アイコン(ショートカット) ----------
 
     private fun createIconShortcut(uri: Uri) {
@@ -1157,6 +1256,10 @@ class MainActivity : Activity() {
 
         if (requestCode == 320) {
             data.data?.let { createIconShortcut(it) }
+            return
+        }
+        if (requestCode == REQ_BACKUP_SAVE || requestCode == REQ_BACKUP_OPEN) {
+            onBackupResult(requestCode, data)
             return
         }
         if (requestCode != REQ_PICK) return

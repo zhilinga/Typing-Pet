@@ -106,4 +106,14 @@
     <string name="switch_selection_desc">For apps that only report cursor position and not text changes (e.g. WebView). Some apps may then react twice.</string>
     <string name="switch_enter_submit_title">Treat the send button as Enter</string>
     <string name="switch_enter_submit_desc">In a single-line field, the IME send/search key clears the field without inserting a newline. Treat that as Enter.</string>
+    <string name="label_backup">Backup</string>
+    <string name="desc_backup">Save characters, images and settings into a single file. Useful before changing phones or reinstalling.</string>
+    <string name="btn_backup_export">Save backup</string>
+    <string name="btn_backup_import">Restore from backup</string>
+    <string name="toast_backup_ok">Backup saved (%1$d images)</string>
+    <string name="toast_restore_ok">Restored (%1$d images)</string>
+    <string name="toast_backup_failed">Failed: %1$s</string>
+    <string name="confirm_restore">This overwrites your current settings and images with the backup. Continue?</string>
+    <string name="backup_pick_title">Where to save the backup</string>
+    <string name="restore_pick_title">Choose a backup file</string>
 </resources>

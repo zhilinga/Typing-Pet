@@ -32,6 +32,14 @@ class PetAccessibilityService : AccessibilityService() {
 
         /** 直前の状態を忘れるまでの時間。別の入力欄に移ったと判断する */
         private const val STATE_RESET_MS = 4000L
+
+        /**
+         * 入力欄が空になったとき、「削除」と確定するまでの待ち時間。
+         * 送信ボタンは「文字を消す」→「空の入力欄をクリック」の順に来ることが多く、
+         * すぐ削除と決めると送信が削除として反応してしまう。
+         * この時間だけ待って、その間にクリックが来なければ削除とみなす。
+         */
+        private const val CLEAR_CONFIRM_MS = 220L
     }
 
     /** テキスト変化が来ないアプリ向け: 前回のカーソル位置と文字数 */
@@ -41,6 +49,37 @@ class PetAccessibilityService : AccessibilityService() {
 
     /** 最後に「内容が空でない入力欄」を見た時刻。送信によるクリア判定に使う */
     private var lastNonEmptyAt = 0L
+
+    /** 「空になった = 削除」を確定させるための保留処理 */
+    private val clearHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var pendingDelete: Runnable? = null
+
+    /** 保留中の削除を取り消す(送信と判明したとき) */
+    private fun cancelPendingDelete() {
+        pendingDelete?.let { clearHandler.removeCallbacks(it) }
+        pendingDelete = null
+    }
+
+    /**
+     * 入力欄が空になったときの処理。
+     * すぐには削除と決めず、少し待ってから削除を確定する。
+     * その間に送信(空の入力欄のクリック)が来たら、そちらが改行として反応し、
+     * ここで予約した削除は取り消される。
+     */
+    private fun deferClearReaction(watchDelete: Boolean, watchEnter: Boolean) {
+        cancelPendingDelete()
+        if (!watchDelete) {
+            // 削除の反応がなければ、改行の判定だけ待てばよい
+            if (!watchEnter) OverlayService.reactIfRunning()
+            return
+        }
+        val runnable = Runnable {
+            pendingDelete = null
+            OverlayService.reactDelete()
+        }
+        pendingDelete = runnable
+        clearHandler.postDelayed(runnable, CLEAR_CONFIRM_MS)
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -84,11 +123,26 @@ class PetAccessibilityService : AccessibilityService() {
 
         rememberTextLength(after.length, event.isPassword)
 
-        // 新しい文字は何も入らず、文字が消えただけ → 「消したとき」
+        // 新しい文字は何も入らず、文字が消えただけ
         if (change.end == change.start) {
+            // 入力欄が「全部空になった」場合は、送信ボタンによる消去かもしれない。
+            // すぐ削除と決めずに少し待ち、その間に空欄クリック(=送信)が来たら
+            // そちらを改行として扱い、この削除は取り消す。
+            if (after.isEmpty()) {
+                cancelPendingDelete()
+                if (watchDelete || watchEnter) {
+                    deferClearReaction(watchDelete, watchEnter)
+                } else {
+                    OverlayService.reactIfRunning()
+                }
+                return
+            }
             if (change.removed > 0 && watchDelete) OverlayService.reactDelete() else OverlayService.reactIfRunning()
             return
         }
+
+        // 何かが入った → 保留中の「削除」は誤りだった可能性が高いので取り消す
+        cancelPendingDelete()
 
         val inserted = after.substring(change.start, change.end)
 
@@ -187,7 +241,7 @@ class PetAccessibilityService : AccessibilityService() {
         if (!Prefs.getEnterOnSubmit(this)) return
         if (event.isPassword) return
 
-        val text = event.text?.joinToString("") ?: return
+        val text = event.text?.joinToString("") ?: ""
         val now = System.currentTimeMillis()
 
         // クリック時に中身がある入力欄 → 記録だけ
@@ -196,8 +250,13 @@ class PetAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 空の入力欄がクリックされた。直前に中身があったなら送信で消えた可能性が高い
-        if (lastNonEmptyAt > 0 && now - lastNonEmptyAt <= STATE_RESET_MS) {
+        // 空の入力欄がクリックされた。
+        // 直前に中身があった(送信で消された)か、直前に「空になった」保留があるなら
+        // 送信ボタンと判断して改行を出し、予約済みの削除を取り消す。
+        val hadContent = lastNonEmptyAt > 0 && now - lastNonEmptyAt <= STATE_RESET_MS
+        val clearJustHappened = pendingDelete != null
+        if (hadContent || clearJustHappened) {
+            cancelPendingDelete()
             lastNonEmptyAt = 0
             OverlayService.reactEnter()
         }
