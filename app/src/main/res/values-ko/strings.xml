@@ -85,7 +85,13 @@
     <string name="desc_show_chars">탭해서 표시／숨기기를 전환합니다. 표시 중인 캐릭터는 화면에서 각각 드래그해 옮길 수 있습니다.</string>
     <string name="show_count">%1$d명 표시 중</string>
     <string name="key_delete">⌫ 지울 때</string>
+    <string name="key_space">␣ 스페이스</string>
+    <string name="key_enter">⏎ 줄바꿈</string>
+    <string name="key_paste">📋 붙여넣기</string>
     <string name="btn_add_delete_trigger">+ ⌫ 지울 때 반응 추가</string>
+    <string name="btn_add_space_trigger">+ ␣ 스페이스 반응 추가</string>
+    <string name="btn_add_enter_trigger">+ ⏎ 줄바꿈 반응 추가</string>
+    <string name="btn_add_paste_trigger">+ 📋 붙여넣기 반응 추가</string>
     <string name="notif_channel">펫 표시</string>
     <string name="notif_text">펫 표시 중</string>
     <string name="pick_image_title">이미지를 고를 앱</string>

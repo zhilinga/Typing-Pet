@@ -85,7 +85,13 @@
     <string name="desc_show_chars">Tap to show or hide. Each character on screen can be dragged around separately.</string>
     <string name="show_count">%1$d shown</string>
     <string name="key_delete">⌫ when deleting</string>
+    <string name="key_space">␣ Space</string>
+    <string name="key_enter">⏎ Enter</string>
+    <string name="key_paste">📋 Paste</string>
     <string name="btn_add_delete_trigger">+ Add reaction for ⌫ deleting</string>
+    <string name="btn_add_space_trigger">+ Add reaction for ␣ Space</string>
+    <string name="btn_add_enter_trigger">+ Add reaction for ⏎ Enter</string>
+    <string name="btn_add_paste_trigger">+ Add reaction for 📋 Paste</string>
     <string name="notif_channel">Pet display</string>
     <string name="notif_text">Pet is on screen</string>
     <string name="pick_image_title">Choose an app</string>

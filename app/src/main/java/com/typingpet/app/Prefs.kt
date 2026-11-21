@@ -70,6 +70,20 @@ object Prefs {
     /** 文字で切り替えの「⌫ 消したとき」を表す特別なキー(文字の照合には使わない) */
     const val DELETE_KEY = "⌫"
 
+    /** スペースを表す特別なキー */
+    const val SPACE_KEY = "␣"
+
+    /** 改行(Enter)を表す特別なキー */
+    const val ENTER_KEY = "⏎"
+
+    /** 貼り付けを表す特別なキー */
+    const val PASTE_KEY = "📋"
+
+    /** 文字の照合ではなく、入力の種類で反応する特別なキー(1項目につき1つだけ登録できる) */
+    val SPECIAL_KEYS = listOf(DELETE_KEY, SPACE_KEY, ENTER_KEY, PASTE_KEY)
+
+    fun isSpecialKey(key: String): Boolean = key in SPECIAL_KEYS
+
     /** 文字で切り替えの1件分 */
     class Trigger(var keys: MutableList<String>, val images: MutableList<String>)
 

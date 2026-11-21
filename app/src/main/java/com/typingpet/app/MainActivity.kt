@@ -83,10 +83,10 @@ class MainActivity : Activity() {
     }
 
     private fun showLanguageDialog(cancelable: Boolean) {
-        val labels = arrayOf("日本語", "English", "한국어")
-        val codes = arrayOf("ja", "en", "ko")
+        val labels = arrayOf("日本語", "English", "한국어", "简体中文")
+        val codes = arrayOf("ja", "en", "ko", "zh")
         AlertDialog.Builder(this)
-            .setTitle("言語 / Language / 언어")
+            .setTitle("言語 / Language / 언어 / 语言")
             .setItems(labels) { _, which ->
                 Prefs.setLanguage(this, codes[which])
                 recreate()
@@ -166,7 +166,7 @@ class MainActivity : Activity() {
         titleRow.addView(Button(this).apply {
             tag = "small"
             text = "🌐 " + when (Prefs.getLanguage(this@MainActivity)) {
-                "ja" -> "日本語"; "en" -> "English"; "ko" -> "한국어"; else -> "Language"
+                "ja" -> "日本語"; "en" -> "English"; "ko" -> "한국어"; "zh" -> "简体中文"; else -> "Language"
             }
             setOnClickListener { showLanguageDialog(cancelable = true) }
         })
@@ -881,7 +881,7 @@ class MainActivity : Activity() {
                     setTextColor(ink)
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 })
-                if (Prefs.DELETE_KEY !in t.keys) header.addView(Button(this@MainActivity).apply {
+                if (Prefs.SPECIAL_KEYS.none { it in t.keys }) header.addView(Button(this@MainActivity).apply {
                     tag = "small"
                     text = getString(R.string.btn_edit_keys)
                     setOnClickListener {
@@ -935,25 +935,39 @@ class MainActivity : Activity() {
             }
         })
 
-        // 「⌫ 消したとき」は1つだけ作れる
-        if (triggers.none { Prefs.DELETE_KEY in it.keys }) {
-            addView(spacer(8))
-            addView(Button(this@MainActivity).apply {
-                text = getString(R.string.btn_add_delete_trigger)
-                setOnClickListener {
-                    val all = Prefs.getTriggers(this@MainActivity)
-                    all.add(Prefs.Trigger(mutableListOf(Prefs.DELETE_KEY), mutableListOf()))
-                    Prefs.setTriggers(this@MainActivity, all)
-                    renderImages()
-                    pickImages(CAT_TRIGGER, all.size - 1) // そのまま画像選択へ
-                }
-            })
+        // 特殊キー(⌫/␣/⏎/📋)はそれぞれ1つだけ作れる
+        val specialButtons = listOf(
+            Prefs.DELETE_KEY to R.string.btn_add_delete_trigger,
+            Prefs.SPACE_KEY to R.string.btn_add_space_trigger,
+            Prefs.ENTER_KEY to R.string.btn_add_enter_trigger,
+            Prefs.PASTE_KEY to R.string.btn_add_paste_trigger
+        )
+        specialButtons.forEach { (key, labelRes) ->
+            if (triggers.none { key in it.keys }) {
+                addView(spacer(8))
+                addView(Button(this@MainActivity).apply {
+                    text = getString(labelRes)
+                    setOnClickListener {
+                        val all = Prefs.getTriggers(this@MainActivity)
+                        all.add(Prefs.Trigger(mutableListOf(key), mutableListOf()))
+                        Prefs.setTriggers(this@MainActivity, all)
+                        renderImages()
+                        pickImages(CAT_TRIGGER, all.size - 1) // そのまま画像選択へ
+                    }
+                })
+            }
         }
     }
 
     private fun formatKeys(keys: List<String>): String =
-        keys.joinToString(" ") {
-            if (it == Prefs.DELETE_KEY) getString(R.string.key_delete) else getString(R.string.key_format, it)
+        keys.joinToString(" ") { key ->
+            when (key) {
+                Prefs.DELETE_KEY -> getString(R.string.key_delete)
+                Prefs.SPACE_KEY -> getString(R.string.key_space)
+                Prefs.ENTER_KEY -> getString(R.string.key_enter)
+                Prefs.PASTE_KEY -> getString(R.string.key_paste)
+                else -> getString(R.string.key_format, key)
+            }
         }
 
     /** 反応する文字を入力するダイアログ(スペース区切りで複数) */

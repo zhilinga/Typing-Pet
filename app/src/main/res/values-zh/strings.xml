@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">打字宠物</string>
+
+    <string name="title_settings">🐾 打字宠物 设置</string>
+
+    <string name="section_permission">权限与宠物显示</string>
+    <string name="btn_overlay">① 允许在其他应用上层显示</string>
+    <string name="btn_accessibility">② 打开无障碍设置</string>
+    <string name="btn_show_pet">③ 显示宠物</string>
+
+    <string name="tab_basic">基本设置</string>
+    <string name="tab_preset">预设</string>
+    <string name="tab_image">插画</string>
+
+    <string name="label_size">尺寸</string>
+    <string name="size_small">小</string>
+    <string name="size_medium">中</string>
+    <string name="size_large">大</string>
+    <string name="size_xlarge">特大</string>
+
+    <string name="label_shake">晃动幅度</string>
+    <string name="desc_shake">打字时宠物晃动的程度。选「无」时不晃动，只切换图片。</string>
+    <string name="shake_none">无</string>
+    <string name="shake_1">1 档</string>
+    <string name="shake_2">2 档</string>
+    <string name="shake_3">3 档</string>
+
+    <string name="label_display">显示</string>
+    <string name="switch_always_on_top_title">始终置顶</string>
+    <string name="switch_always_on_top_desc">开启后，打开其他应用时宠物会自动出现。关闭后只有按下③按钮时才显示。</string>
+    <string name="switch_lock_title">锁定位置（点击穿透）</string>
+    <string name="switch_lock_desc">开启后点击会穿透到下层应用，且无法拖动。</string>
+    <string name="btn_reset_pos">重置位置</string>
+
+    <string name="label_builtin_color">内置配色</string>
+    <string name="desc_builtin_color">在插画页没有添加图片期间，使用这里选择的颜色。</string>
+    <string name="label_selected">已选中</string>
+    <string name="label_select">选择</string>
+
+    <string name="btn_remove">删除</string>
+
+
+    <string name="label_icon_section">主屏幕图标（可选）</string>
+    <string name="desc_icon_section">受 Android 机制限制，应用本体图标装好后无法更改。作为替代，可以用你选的图片在主屏幕添加一个快捷方式。添加后请从那个图标打开应用。</string>
+    <string name="btn_add_icon_shortcut">选择图片并添加到主屏幕</string>
+    <string name="toast_icon_not_supported">该设备不支持向主屏幕添加快捷方式</string>
+
+    <string name="label_idle">待机插画</string>
+    <string name="btn_add_image">＋ 添加图片（可多选）</string>
+    <string name="empty_hint">还没有图片</string>
+    <string name="desc_idle">没有输入时显示。注册多张时，每次回到待机都会随机选一张。未注册时使用打字中的第 1 张（若没有则用内置配色）。</string>
+    <string name="label_steps">打字中插画（按顺序）</string>
+    <string name="desc_steps">输入时按 第 1 张 → 第 2 张 → 第 3 张… 的顺序切换，到最后一张后回到第 1 张。给同一序号添加多个图案时，轮到该序号会随机选一张。</string>
+    <string name="step_label">第 %1$d 张</string>
+    <string name="btn_add_variant">＋ 添加同序号图案</string>
+    <string name="btn_add_step">＋ 添加下一序号</string>
+    <string name="btn_delete_step">删除该序号</string>
+    <string name="label_triggers">按字符切换（可选）</string>
+    <string name="desc_triggers">输入注册过的字符的瞬间，会从该图片中随机显示一张。一张图可以指定多个字符（例如「啊」「呜」对应沮丧脸）。全角与半角视为不同字符。输入内容不会被保存或发送，只在当场比对输入位置前面几个字符是否包含注册字符。空格、回车、粘贴等特殊反应可在下方添加。</string>
+    <string name="trigger_keys_label">响应的字符：%1$s</string>
+    <string name="key_format">「%1$s」</string>
+    <string name="btn_edit_keys">编辑字符</string>
+    <string name="btn_add_trigger">＋ 添加字符反应</string>
+    <string name="dialog_keys_title">响应的字符</string>
+    <string name="dialog_keys_hint">例：啊 呜（用空格分隔可输入多个）</string>
+    <string name="btn_ok">确定</string>
+    <string name="btn_cancel">取消</string>
+    <string name="toast_keys_empty">请至少输入一个字符</string>
+    <string name="label_chars">角色</string>
+    <string name="desc_chars">插画（待机、打字中、按字符切换）和内置配色可以按角色分别保存。在插画页的编辑会反映到「编辑中」的角色上。</string>
+    <string name="char_default_name">角色 %1$d</string>
+    <string name="label_in_use">（编辑中）</string>
+    <string name="btn_use">编辑</string>
+    <string name="btn_rename">重命名</string>
+    <string name="btn_add_char">＋ 新角色（空白）</string>
+    <string name="btn_dup_char">＋ 复制当前使用的角色</string>
+    <string name="dialog_char_name_title">角色名称</string>
+    <string name="copy_suffix">%1$s 的副本</string>
+    <string name="confirm_delete_char">要删除「%1$s」吗？</string>
+    <string name="toast_last_char">最后一个角色无法删除</string>
+    <string name="switch_shadow_title">显示脚下阴影</string>
+    <string name="switch_shadow_desc">宠物脚下的淡阴影。使用透明 PNG 插画觉得阴影碍事时可以关闭。</string>
+    <string name="label_show_chars">显示的角色</string>
+    <string name="desc_show_chars">点击切换显示／隐藏。显示中的角色可以在屏幕上各自拖动移动。</string>
+    <string name="show_count">正在显示 %1$d 个</string>
+    <string name="key_delete">⌫ 删除时</string>
+    <string name="btn_add_delete_trigger">＋ ⌫ 删除时的反应</string>
+    <string name="key_space">␣ 空格</string>
+    <string name="key_enter">⏎ 回车</string>
+    <string name="key_paste">📋 粘贴</string>
+    <string name="btn_add_space_trigger">＋ ␣ 空格的反应</string>
+    <string name="btn_add_enter_trigger">＋ ⏎ 回车的反应</string>
+    <string name="btn_add_paste_trigger">＋ 📋 粘贴的反应</string>
+    <string name="notif_channel">宠物显示</string>
+    <string name="notif_text">宠物显示中</string>
+    <string name="pick_image_title">选择图片的应用</string>
+    <string name="toast_import_failed">有图片读取失败</string>
+    <string name="perm_ok">✓ OK</string>
+    <string name="perm_set">设置 ›</string>
+</resources>

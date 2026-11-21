@@ -28,8 +28,8 @@ class OverlayService : Service() {
         val view: PetView,
         val params: WindowManager.LayoutParams,
         var keys: List<List<String>> = emptyList(),
-        /** 「⌫ 消したとき」の項目の番号(なければ -1) */
-        var deleteIdx: Int = -1
+        /** 「⌫ 消したとき」など特別なキーの項目番号(なければ空) */
+        var specialIdx: Map<String, Int> = emptyMap()
     )
 
     /** キャラid → 表示中のペット */
@@ -40,6 +40,9 @@ class OverlayService : Service() {
 
     @Volatile private var maxKeyLen = 0
     @Volatile private var watchDel = false
+    @Volatile private var watchSpc = false
+    @Volatile private var watchEnt = false
+    @Volatile private var watchPst = false
 
     companion object {
         @Volatile var instance: OverlayService? = null
@@ -50,9 +53,33 @@ class OverlayService : Service() {
         /** 表示中キャラの誰かが「⌫ 消したとき」を登録しているか */
         val watchDelete: Boolean get() = instance?.watchDel ?: false
 
+        /** 表示中キャラの誰かが「␣ スペース」を登録しているか */
+        val watchSpace: Boolean get() = instance?.watchSpc ?: false
+
+        /** 表示中キャラの誰かが「⏎ 改行」を登録しているか */
+        val watchEnter: Boolean get() = instance?.watchEnt ?: false
+
+        /** 表示中キャラの誰かが「📋 貼り付け」を登録しているか */
+        val watchPaste: Boolean get() = instance?.watchPst ?: false
+
         /** 文字が消されただけのときに呼ぶ */
         fun reactDelete() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.deleteIdx) } } }
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.DELETE_KEY] ?: -1) } } }
+        }
+
+        /** スペースが入力されたときに呼ぶ */
+        fun reactSpace() {
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.SPACE_KEY] ?: -1) } } }
+        }
+
+        /** 改行が入力されたときに呼ぶ */
+        fun reactEnter() {
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.ENTER_KEY] ?: -1) } } }
+        }
+
+        /** 貼り付けが行われたときに呼ぶ */
+        fun reactPaste() {
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.PASTE_KEY] ?: -1) } } }
         }
 
         fun reactIfRunning() {
@@ -143,12 +170,19 @@ class OverlayService : Service() {
             )
             // 画像が1枚もない項目は照合しない
             val keysAll = c.triggers.map { if (it.images.isEmpty()) emptyList() else it.keys.toList() }
-            pet.deleteIdx = keysAll.indexOfFirst { Prefs.DELETE_KEY in it }
-            pet.keys = keysAll.map { l -> l.filter { it != Prefs.DELETE_KEY } }
+            val special = HashMap<String, Int>()
+            keysAll.forEachIndexed { i, l ->
+                Prefs.SPECIAL_KEYS.firstOrNull { it in l }?.let { k -> special[k] = i }
+            }
+            pet.specialIdx = special
+            pet.keys = keysAll.map { l -> l.filter { !Prefs.isSpecialKey(it) } }
         }
 
         maxKeyLen = pets.values.flatMap { it.keys.flatten() }.maxOfOrNull { it.length } ?: 0
-        watchDel = pets.values.any { it.deleteIdx >= 0 }
+        watchDel = pets.values.any { Prefs.DELETE_KEY in it.specialIdx }
+        watchSpc = pets.values.any { Prefs.SPACE_KEY in it.specialIdx }
+        watchEnt = pets.values.any { Prefs.ENTER_KEY in it.specialIdx }
+        watchPst = pets.values.any { Prefs.PASTE_KEY in it.specialIdx }
     }
 
     private fun createPet(id: String): Pet? {

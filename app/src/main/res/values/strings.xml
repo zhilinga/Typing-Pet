@@ -85,7 +85,13 @@
     <string name="desc_show_chars">タップで表示／非表示を切り替え。表示中のキャラは、画面上でそれぞれドラッグして動かせます。</string>
     <string name="show_count">%1$d体表示中</string>
     <string name="key_delete">⌫ 消したとき</string>
+    <string name="key_space">␣ スペース</string>
+    <string name="key_enter">⏎ 改行</string>
+    <string name="key_paste">📋 貼り付け</string>
     <string name="btn_add_delete_trigger">＋ ⌫ 消したときの反応を追加</string>
+    <string name="btn_add_space_trigger">＋ ␣ スペースの反応を追加</string>
+    <string name="btn_add_enter_trigger">＋ ⏎ 改行の反応を追加</string>
+    <string name="btn_add_paste_trigger">＋ 📋 貼り付けの反応を追加</string>
     <string name="notif_channel">ペットの表示</string>
     <string name="notif_text">ペットを表示中</string>
     <string name="pick_image_title">画像を選ぶアプリ</string>
