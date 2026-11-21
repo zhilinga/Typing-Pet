@@ -42,6 +42,7 @@ class OverlayService : Service() {
     @Volatile private var watchSpc = false
     @Volatile private var watchEnt = false
     @Volatile private var watchPst = false
+    @Volatile private var watchCpy = false
 
     companion object {
         @Volatile var instance: OverlayService? = null
@@ -61,6 +62,9 @@ class OverlayService : Service() {
         /** 表示中キャラの誰かが「📋 貼り付け」を登録しているか */
         val watchPaste: Boolean get() = instance?.watchPst ?: false
 
+        /** 表示中キャラの誰かが「📄 コピー」を登録しているか */
+        val watchCopy: Boolean get() = instance?.watchCpy ?: false
+
         /** 文字が消されただけのときに呼ぶ */
         fun reactDelete() {
             instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.DELETE_KEY] ?: -1) } } }
@@ -79,6 +83,11 @@ class OverlayService : Service() {
         /** 貼り付けが行われたときに呼ぶ */
         fun reactPaste() {
             instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.PASTE_KEY] ?: -1) } } }
+        }
+
+        /** コピーが行われたときに呼ぶ */
+        fun reactCopy() {
+            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.COPY_KEY] ?: -1) } } }
         }
 
         fun reactIfRunning() {
@@ -182,6 +191,7 @@ class OverlayService : Service() {
         watchSpc = pets.values.any { Prefs.SPACE_KEY in it.specialIdx }
         watchEnt = pets.values.any { Prefs.ENTER_KEY in it.specialIdx }
         watchPst = pets.values.any { Prefs.PASTE_KEY in it.specialIdx }
+        watchCpy = pets.values.any { Prefs.COPY_KEY in it.specialIdx }
     }
 
     private fun createPet(id: String): Pet? {

@@ -234,16 +234,28 @@ class PetAccessibilityService : AccessibilityService() {
     // ---------- 文字変化を送らないアプリ向け: カーソル位置の変化で打鍵を推定 ----------
 
     /**
-     * WebView や一部の自前入力欄は TYPE_VIEW_TEXT_CHANGED を送らないが、
-     * カーソル位置の変化(TYPE_VIEW_TEXT_SELECTION_CHANGED)は送ってくる。
-     * ここでは「カーソルが後ろに動いた = 何か入力された」とだけ判断して反応させる。
-     * 入力内容は読まない(text を参照しない)ので、文字そのものは一切扱わない。
+     * 選択範囲の変化から、コピーと打鍵を推定する。
+     *
+     * コピーについて:
+     *   Android 10 以降、バックグラウンドのアプリはクリップボードを読めない
+     *   (getPrimaryClip / addPrimaryClipChangedListener は空を返すか発火しない)。
+     *   そのため「クリップボードが変わった」を直接知ることはできない。
+     *   代わりに選択範囲の形を見る: 文字を選ぶと範囲ありになり、
+     *   コピーすると範囲が畳まれてキャレットに戻る。この遷移をコピーとみなす。
+     *   文字が減っていれば切り取りなのでコピー扱いにしない。
+     *
+     * 打鍵について:
+     *   WebView などは文字変化を送らずカーソル位置だけ送る。カーソルの前後移動で推定する。
+     *
+     * 選択範囲の大きさ(=何文字目から何文字目か)だけを見て、入力内容は一切読まない。
      */
     private fun onSelectionChanged(event: AccessibilityEvent) {
         // この推定はアプリによっては二重反応するので、設定でONにした時だけ動かす
-        if (!Prefs.getSelectionFallback(this)) return
+        val fallback = Prefs.getSelectionFallback(this)
+        val watchCopy = OverlayService.watchCopy
         // パスワード欄は見ない
         if (event.isPassword) return
+        if (!fallback && !watchCopy) return
         if (OverlayService.maxKeyLength <= 0 && !anySpecialWatched()) return
 
         val start = event.fromIndex
@@ -253,11 +265,50 @@ class PetAccessibilityService : AccessibilityService() {
         val now = System.currentTimeMillis()
         val prevStart = lastSelStart
         val prevEnd = lastSelEnd
+        val prevLen = lastTextLength
+
+        // 選択イベント時点の文字数。text が取れないアプリもあるので、取れたときだけ更新する
+        val textNow = try {
+            event.text?.firstOrNull()?.toString()
+        } catch (e: Throwable) {
+            null
+        }
+        val lenNow = textNow?.length ?: prevLen
+        if (textNow != null) lastTextLength = lenNow
+
         lastSelStart = start
         lastSelEnd = end
 
+        val wasRange = prevStart >= 0 && prevEnd > prevStart
+        val isRange = end > start
+
+        // ---------- コピーの検知 ----------
+        // Android 10 以降、バックグラウンドのアプリはクリップボードを読めない。
+        // そのため「コピーされたこと」を直接は知れない。代わりに選択の形を見る:
+        //   長押しで文字を選ぶ → 選択が「範囲あり」になる
+        //   「コピー」を押す   → 選択が畳まれてキャレットに戻ることが多い
+        // この「範囲あり → 範囲なし」の遷移を、コピーとみなす。
+        // 選択の大きさだけを見て、文字の中身は一切読まない。
+        if (watchCopy && wasRange && !isRange) {
+            // 文字が減っていれば切り取り。減っていなければコピー。
+            val shortened = prevLen >= 0 && lenNow >= 0 && lenNow < prevLen
+            if (!shortened) {
+                OverlayService.reactCopy()
+                return
+            }
+        }
+
+        // 以下はカーソル移動からの入力推定。設定でONのときだけ
+        if (!fallback) return
+
         // 初回・入力欄の切り替え直後は判断材料がないので何もしない
         if (prevStart < 0) return
+
+        // 範囲選択が始まっただけのときは打鍵とみなさない
+        if (isRange) return
+
+        // 選択確定後のカーソル位置変化。前回が範囲選択中なら比較しない
+        if (wasRange) return
 
         // カーソルが後ろへ動いた → 文字が入った可能性が高い
         if (start > prevStart || end > prevEnd) {

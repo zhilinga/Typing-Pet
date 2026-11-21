@@ -998,7 +998,8 @@ class MainActivity : Activity() {
             Prefs.DELETE_KEY to R.string.btn_add_delete_trigger,
             Prefs.SPACE_KEY to R.string.btn_add_space_trigger,
             Prefs.ENTER_KEY to R.string.btn_add_enter_trigger,
-            Prefs.PASTE_KEY to R.string.btn_add_paste_trigger
+            Prefs.PASTE_KEY to R.string.btn_add_paste_trigger,
+            Prefs.COPY_KEY to R.string.btn_add_copy_trigger
         )
         specialButtons.forEach { (key, labelRes) ->
             if (triggers.none { key in it.keys }) {
@@ -1015,6 +1016,12 @@ class MainActivity : Activity() {
                 })
             }
         }
+
+        // コピー検知の制約を明記(誤解を避けるため)
+        if (Prefs.COPY_KEY in triggers.flatMap { it.keys }) {
+            addView(spacer(10))
+            addView(descLabel(getString(R.string.desc_copy_limit)))
+        }
     }
 
     private fun formatKeys(keys: List<String>): String =
@@ -1024,6 +1031,7 @@ class MainActivity : Activity() {
                 Prefs.SPACE_KEY -> getString(R.string.key_space)
                 Prefs.ENTER_KEY -> getString(R.string.key_enter)
                 Prefs.PASTE_KEY -> getString(R.string.key_paste)
+                Prefs.COPY_KEY -> getString(R.string.key_copy)
                 else -> getString(R.string.key_format, key)
             }
         }

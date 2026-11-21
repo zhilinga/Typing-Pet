@@ -94,8 +94,11 @@ object Prefs {
     /** 貼り付けを表す特別なキー */
     const val PASTE_KEY = "📋"
 
+    /** コピーを表す特別なキー */
+    const val COPY_KEY = "📄"
+
     /** 文字の照合ではなく、入力の種類で反応する特別なキー(1項目につき1つだけ登録できる) */
-    val SPECIAL_KEYS = listOf(DELETE_KEY, SPACE_KEY, ENTER_KEY, PASTE_KEY)
+    val SPECIAL_KEYS = listOf(DELETE_KEY, SPACE_KEY, ENTER_KEY, PASTE_KEY, COPY_KEY)
 
     fun isSpecialKey(key: String): Boolean = key in SPECIAL_KEYS
 

@@ -118,4 +118,7 @@
     <string name="restore_pick_title">选择备份文件</string>
     <string name="label_paste_min">判定为粘贴的字数</string>
     <string name="desc_paste_min">一次进来这么多字就算作粘贴。设得小更容易触发，但打字时会插入空格的拼音输入法也更容易误触发。</string>
+    <string name="key_copy">📄 复制时</string>
+    <string name="btn_add_copy_trigger">＋ 📄 复制的反应</string>
+    <string name="desc_copy_limit">※ 复制靠「选中文字后又收回选区」来判定。Android 10 起不允许读取剪贴板，所以无法从粘贴那一侧检测。</string>
 </resources>

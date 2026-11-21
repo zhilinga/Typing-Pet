@@ -118,4 +118,7 @@
     <string name="restore_pick_title">Choose a backup file</string>
     <string name="label_paste_min">Characters to count as paste</string>
     <string name="desc_paste_min">That many characters arriving at once is treated as a paste. Smaller reacts more easily, but IMEs that insert spaces while typing pinyin will false-trigger more often.</string>
+    <string name="key_copy">📄 When copying</string>
+    <string name="btn_add_copy_trigger">+ Add reaction for 📄 copy</string>
+    <string name="desc_copy_limit">Note: copying is detected from the selection collapsing after you select text and copy. Android 10+ forbids reading the clipboard, so it cannot be detected from the paste side.</string>
 </resources>
