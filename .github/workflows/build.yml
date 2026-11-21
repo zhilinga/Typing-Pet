@@ -24,37 +24,76 @@ jobs:
           gradle-version: "8.4"
 
       # 固定の署名鍵を Secrets から復元(毎回同じ鍵で署名 → 上書き更新できる)
-      # 登録されていない場合はスキップし、Android 標準の debug 鍵で署名してビルドを続行する
+      # 登録されていない場合だけ debug 鍵にフォールバックする
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::notice::Secret KEYSTORE_BASE64 が未登録のため、debug 鍵で署名します(上書き更新はできません)"
+            echo "::warning::Secret KEYSTORE_BASE64 が未登録のため、debug 鍵で署名します(上書き更新はできません)"
             exit 0
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > app/typingpet.jks
+          ls -l app/typingpet.jks
 
+      # 固定鍵があるなら release を、なければ debug をビルドする
       - name: Build
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleDebug
+        run: |
+          if [ -f app/typingpet.jks ]; then
+            echo "固定鍵で release をビルドします"
+            gradle assembleRelease
+          else
+            echo "debug をビルドします"
+            gradle assembleDebug
+          fi
 
       - name: Remove signing key
         if: always()
         run: rm -f app/typingpet.jks
 
+      # 署名が期待どおりか検証する。固定鍵があるときは証明書の SHA-256 を Secrets と突き合わせる
+      - name: Verify signature
+        env:
+          EXPECTED_SHA256: ${{ secrets.SIGNING_CERT_SHA256 }}
+        run: |
+          set -e
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          echo "APK: $APK"
+          if [ ! -f "$APK" ]; then echo "::error::APK が見つかりません"; exit 1; fi
+
+          # apksigner で証明書を出す(Android SDK のビルドツールに同梱)
+          BT=$(ls -d $ANDROID_HOME/build-tools/* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$BT" ]; then echo "::warning::build-tools が見つからないため署名検証をスキップ"; exit 0; fi
+          "$BT/apksigner" verify --print-certs "$APK" | tee certs.txt
+          ACTUAL=$(grep -i 'SHA-256 digest' certs.txt | head -1 | sed 's/.*: //' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "actual  : $ACTUAL"
+
+          if [ -n "$EXPECTED_SHA256" ]; then
+            EXPECT=$(echo "$EXPECTED_SHA256" | tr -d ':' | tr 'A-F' 'a-f')
+            echo "expected: $EXPECT"
+            if [ "$ACTUAL" != "$EXPECT" ]; then
+              echo "::error::署名証明書が想定と違います。Secrets を確認してください"
+              exit 1
+            fi
+            echo "::notice::署名証明書は想定どおりです"
+          else
+            echo "::warning::SIGNING_CERT_SHA256 が未登録のため照合はスキップしました"
+          fi
+
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk "out/TypingPet-zh-v${GITHUB_RUN_NUMBER}.apk"
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          cp "$APK" "out/TypingPet-zh-v${GITHUB_RUN_NUMBER}.apk"
           ls -l out/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: typing-pet-debug-apk
+          name: typing-pet-apk
           path: out/*.apk
 
       # 手动触发时同时发布到 Release，手机上可直接点链接下载
@@ -66,5 +105,5 @@ jobs:
           TAG="build-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" out/*.apk \
             --title "中文版 build ${GITHUB_RUN_NUMBER}" \
-            --notes "自动构建：汉化 + 空格/回车/粘贴检测" \
+            --notes "自动构建：汉化 + 空格/回车/粘贴检测 + 动图 + 备份" \
             --repo "$GITHUB_REPOSITORY"

@@ -3,6 +3,10 @@ apply plugin: 'kotlin-android'
 
 // GitHub Actions がビルド時だけ Secrets から復元する固定の署名鍵(リポジトリには入れない)
 def stableKeystore = file("typingpet.jks")
+def hasStableKey = stableKeystore.exists() &&
+        System.getenv("KEYSTORE_PASSWORD") &&
+        System.getenv("KEY_ALIAS") &&
+        System.getenv("KEY_PASSWORD")
 
 android {
     namespace 'com.typingpet.app'
@@ -12,14 +16,15 @@ android {
         applicationId "com.typingpet.app"
         minSdk 24
         targetSdk 34
-        versionCode 5
-        versionName "1.4.0-zh"
+        versionCode 6
+        versionName "1.4.1-zh"
     }
 
     signingConfigs {
         stable {
-            if (stableKeystore.exists()) {
+            if (hasStableKey) {
                 storeFile stableKeystore
+                storeType "PKCS12"
                 storePassword System.getenv("KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KEY_ALIAS")
                 keyPassword System.getenv("KEY_PASSWORD")
@@ -29,11 +34,16 @@ android {
 
     buildTypes {
         debug {
-            if (stableKeystore.exists()) signingConfig signingConfigs.stable
+            if (hasStableKey) {
+                signingConfig signingConfigs.stable
+            }
         }
         release {
             minifyEnabled false
-            if (stableKeystore.exists()) signingConfig signingConfigs.stable
+            // 固定鍵があるときは必ずそれで署名する(debug 鍵にフォールバックさせない)
+            if (hasStableKey) {
+                signingConfig signingConfigs.stable
+            }
         }
     }
 
