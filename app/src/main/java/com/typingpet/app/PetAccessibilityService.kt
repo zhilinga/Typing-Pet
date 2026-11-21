@@ -52,9 +52,13 @@ class PetAccessibilityService : AccessibilityService() {
 
         /**
          * 入力法のウィンドウ変化を「1打鍵」にまとめる間隔。
-         * 1文字打つと候補バーの更新が複数回来るので、この間は無視する。
+         * 実測(WeType)では 1 打鍵で 90〜100ms 間隔の更新が 2〜3 回届く。
+         * その連続をまとめるため、直前の更新からこの時間内は無視する。
          */
-        private const val IME_EVENT_THROTTLE_MS = 45L
+        private const val IME_EVENT_BURST_MS = 260L
+
+        /** 入力欄フォーカスの確認結果をキャッシュする時間 */
+        private const val EDIT_FOCUS_CACHE_MS = 400L
 
         /** コピー後の通知ウィンドウを見分ける手がかり */
         private val CLIPBOARD_WINDOW_HINTS = listOf(
@@ -147,6 +151,10 @@ class PetAccessibilityService : AccessibilityService() {
 
     /** 端末の入力法パッケージ一覧(一度だけ取得する) */
     private var imePackagesCache: Set<String>? = null
+
+    /** 編集可能な入力欄にフォーカスがあるかのキャッシュ */
+    private var lastEditFocusResult = true
+    private var lastEditFocusCheckAt = 0L
 
     /** 範囲選択が始まった時刻。コピーの補助判定に使う */
     private var rangeSelectedAt = 0L
@@ -319,16 +327,66 @@ class PetAccessibilityService : AccessibilityService() {
         if (pkg.isEmpty()) return false
         if (!isImePackage(pkg)) return false
 
-        // 入力法のウィンドウ変化は1打鍵につき複数回来ることがある。
-        // 短い間隔で連続した分は1回の打鍵としてまとめる。
-        val now = System.currentTimeMillis()
-        if (now - lastImeEventAt < IME_EVENT_THROTTLE_MS) return true
-        lastImeEventAt = now
+        // タップしたのが「キーボードのキー」か「それ以外のボタン」かは、
+        // イベントだけでは区別できない。そこで「編集可能な入力欄に
+        // フォーカスが当たっているときだけ」反応させる。
+        // 入力欄にフォーカスが無い状態の入力法操作(設定など)は無視できる。
+        if (!isEditingFieldFocused()) return true
 
-        // 打鍵があった = 入力中として反応させる。
-        // 「文字で切り替え」は入力内容が分からないので、入力中の表情切り替えのみ。
+        // 実測(WeType): 1回のキー入力で 90〜100ms 間隔の更新が 2〜3 回届く。
+        // その連続をまとめ、先頭の1回だけを打鍵として数える。
+        val now = System.currentTimeMillis()
+        val gap = now - lastImeEventAt
+
+        if (gap < IME_EVENT_BURST_MS) {
+            // 同じ打鍵の残りの更新
+            lastImeEventAt = now
+            return true
+        }
+
+        lastImeEventAt = now
         OverlayService.reactImeKey()
         return true
+    }
+
+    /**
+     * いま編集可能な入力欄にフォーカスがあるか。
+     * 入力法のウィンドウ更新が「文字入力」によるものかを絞るために使う。
+     *
+     * 入力欄の内容は読まず、フォーカスの有無と編集可能かどうかだけを見る。
+     */
+    private fun isEditingFieldFocused(): Boolean {
+        val now = System.currentTimeMillis()
+        // 毎イベントでツリーを辿ると重いので、結果を少しの間キャッシュする
+        if (now - lastEditFocusCheckAt < EDIT_FOCUS_CACHE_MS) return lastEditFocusResult
+        lastEditFocusCheckAt = now
+
+        val result = try {
+            val root = rootInActiveWindow
+            if (root == null) {
+                false
+            } else {
+                try {
+                    val focused = root.findFocus(
+                        android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT
+                    )
+                    focused != null && focused.isEditable
+                } finally {
+                    try {
+                        @Suppress("DEPRECATION")
+                        root.recycle()
+                    } catch (e: Throwable) {
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            // 取れないときは「入力欄にフォーカスがある」とみなす。
+            // (誤って反応しないより、反応する方を優先)
+            true
+        }
+
+        lastEditFocusResult = result
+        return result
     }
 
     /**
