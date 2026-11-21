@@ -543,7 +543,7 @@ class PetAccessibilityService : AccessibilityService() {
         for (i in 1 until times) {
             // 2文字目以降は設定した間隔だけずらす(0 ならほぼ同時)
             val post = Runnable { OverlayService.reactText(window, newFrom) }
-            clearHandler.postDelayed(post, delay * i)
+            clearHandler.postDelayed(post, (delay * i).toLong())
         }
     }
 
