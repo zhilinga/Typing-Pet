@@ -264,7 +264,7 @@ class PetAccessibilityService : AccessibilityService() {
         if (clsRaw.isEmpty()) return
 
         // 手がかり語はいずれも小文字。大文字が混じったときだけ変換する
-        val hint = (pkgRaw + ' ' + clsRaw).lowercase()
+        val hint = (pkgRaw.toString() + ' ' + clsRaw.toString()).lowercase()
         if (CLIPBOARD_WINDOW_HINTS.none { hint.contains(it) }) return
 
         val now = System.currentTimeMillis()
