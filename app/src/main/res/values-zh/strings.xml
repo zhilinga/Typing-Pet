@@ -58,7 +58,7 @@
     <string name="btn_add_step">＋ 添加下一序号</string>
     <string name="btn_delete_step">删除该序号</string>
     <string name="label_triggers">按字符切换（可选）</string>
-    <string name="desc_triggers">输入注册过的字符的瞬间，会从该图片中随机显示一张。一张图可以指定多个字符（例如「啊」「呜」对应沮丧脸）。全角与半角视为不同字符。输入内容不会被保存或发送，只在当场比对输入位置前面几个字符是否包含注册字符。空格、回车、粘贴等特殊反应可在下方添加。</string>
+    <string name="desc_triggers">输入注册过的字符的瞬间，会从该图片中随机显示一张。一张图可以指定多个字符（例如「啊」「呜」对应沮丧脸）。全角与半角视为不同字符。输入内容不会被保存或发送，只在当场比对输入位置前面几个字符是否包含注册字符。空格、回车、粘贴等特殊反应可在下方添加；粘贴无法与输入法上屏完全区分，按「一次进来多个字符且没有删字」判定，选取范围覆盖粘贴时按 8 字以上判定。</string>
     <string name="trigger_keys_label">响应的字符：%1$s</string>
     <string name="key_format">「%1$s」</string>
     <string name="btn_edit_keys">编辑字符</string>

@@ -7,18 +7,18 @@ import android.view.accessibility.AccessibilityEvent
 class PetAccessibilityService : AccessibilityService() {
 
     companion object {
-        /** これ文字数以上が一度に入れば、変換確定ではなく貼り付けとみなす */
-        private const val PASTE_ALWAYS_LEN = 12
-
-        /** 貼り付け判定に使う最小文字数(これ未満は1文字入力とみなす) */
+        /**
+         * 貼り付けとみなす最小文字数。
+         * 1文字だけの貼り付けは普通の入力と区別できないので対象外。
+         */
         private const val PASTE_MIN_LEN = 2
 
-        /** 前回の入力からこれだけ間が空いていれば、まとめ入力=貼り付けとみなす(ミリ秒) */
-        private const val PASTE_IDLE_GAP_MS = 600L
+        /**
+         * 選択範囲を置換する形の貼り付け(何かが消えたと同時に入る)を
+         * 貼り付けとみなす文字数。変換確定は普通 1〜4 文字なので、それより明確に多くする。
+         */
+        private const val PASTE_REPLACE_LEN = 8
     }
-
-    /** 直近に文字変化を処理した時刻(貼り付け判定用) */
-    private var lastTextChangeAt = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -57,17 +57,23 @@ class PetAccessibilityService : AccessibilityService() {
         }
 
         val inserted = after.substring(change.start, change.end)
-        val now = System.currentTimeMillis()
-        // 最初の入力は「久しぶりのまとめ入力」と区別できないので gap 0 扱い
-        val gap = if (lastTextChangeAt == 0L) 0L else now - lastTextChangeAt
-        lastTextChangeAt = now
 
-        // 貼り付け: 何も消さずにまとめて複数文字が入った。
-        // ただし漢字変換などの確定もまとめて複数文字になるため、
-        // 「前回の入力から間が空いている」または「明らかに長い」ときだけ貼り付けとみなす。
-        if (watchPaste && change.removed == 0 && isPasteLike(inserted.length, gap)) {
-            OverlayService.reactPaste()
-            return
+        // 貼り付け判定。アクセシビリティイベントに「貼り付け」を示す情報は無いので、
+        // 「一度に入った文字数」と「同時に消えた文字数」から推定する。
+        //  - 変換確定(拼音→漢字): 拼音が消えて漢字が入る → removed > 0、入るのは数文字
+        //  - 貼り付け:           消さずにまとめて入る   → removed == 0、入るのは2文字以上
+        //  - 選択範囲を置換して貼り付け: removed > 0 だが入る文字数が明らかに多い
+        if (watchPaste) {
+            val pasted = if (change.removed == 0) {
+                inserted.length >= PASTE_MIN_LEN
+            } else {
+                // 置換ペースト。変換確定より明確に長いときだけ貼り付けとみなす
+                inserted.length >= PASTE_REPLACE_LEN
+            }
+            if (pasted) {
+                OverlayService.reactPaste()
+                return
+            }
         }
 
         // 1文字だけ入ったときのスペース・改行
@@ -86,17 +92,6 @@ class PetAccessibilityService : AccessibilityService() {
         // 入力位置の直前数文字(登録文字の最大長ぶん)だけを切り出して各キャラに渡す(保存・送信はしない)
         val winStart = maxOf(0, change.start - (maxLen - 1))
         OverlayService.reactText(after.substring(winStart, change.end), change.start - winStart)
-    }
-
-    /**
-     * 今回の入力を「貼り付け」とみなすか。
-     * len: 一度に入った文字数 / gapMs: 前回の文字変化からの経過ミリ秒
-     */
-    private fun isPasteLike(len: Int, gapMs: Long): Boolean {
-        if (len < 2) return false
-        if (len >= PASTE_ALWAYS_LEN) return true      // 長すぎれば変換ではありえない → 貼り付け
-        if (len < PASTE_MIN_LEN) return false          // 2〜4文字は変換確定のことが多い
-        return gapMs >= PASTE_IDLE_GAP_MS              // 入力が止まった後のまとめ入力 = 貼り付け
     }
 
     /** 今回の変更: 入力された範囲 [start, end) と、消えた文字数 */
