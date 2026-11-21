@@ -3,16 +3,18 @@
     typeViewTextChanged : 通常の入力欄。文字が変わったことを通知する
     typeViewTextSelectionChanged : 一部のアプリ(WebView など)は文字変化を送らず、
                                    カーソル位置の変化だけを送る。打鍵の検知に使う
-    typeViewClicked : IME の「送信/検索」ボタンや、入力欄のタップを拾う補助
-    typeWindowStateChanged : アプリ切り替えを検知して状態を持ち越さない
+    typeViewClicked : 「コピー」「貼り付け」ボタンや IME の送信ボタンを拾う
 
-    flagReportViewIds / flagRetrieveInteractiveWindows は付けない:
-    入力内容を読む必要がないので、権限を広げない。
+    canRetrieveWindowContent / flagRetrieveInteractiveWindows :
+    「コピー」ボタンのラベルは event.contentDescription や event.text では
+    取れないことが多く、event.source(ノード)側にしか無い。
+    そのノードを読むために必要。読む対象はメニュー項目のラベルだけで、
+    入力欄の本文は読まない。
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeViewTextChanged|typeViewTextSelectionChanged|typeViewClicked"
+    android:accessibilityEventTypes="typeViewTextChanged|typeViewTextSelectionChanged|typeViewClicked|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault"
-    android:canRetrieveWindowContent="false"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagReportViewIds"
+    android:canRetrieveWindowContent="true"
     android:notificationTimeout="0"
     android:description="@string/accessibility_description" />

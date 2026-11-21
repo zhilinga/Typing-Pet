@@ -123,4 +123,10 @@
     <string name="desc_copy_limit">※ コピーは「選択メニューのコピーボタン」を押したことを見て判定します。クリップボードの中身は読みません（Android 10 以降、一般のアプリは読めません）。</string>
     <string name="switch_copy_selection_title">選択のたたみでもコピーとみなす</string>
     <string name="switch_copy_selection_desc">ONにすると、選択メニューを使わずに選択を終えた場合もコピーとして反応します。素早いスクロール選択でも誤反応しやすくなります。</string>
+    <string name="switch_debug_title">検知の記録を取る</string>
+    <string name="switch_debug_desc">コピーなどが反応しないときの調査用です。受け取ったイベントの種類とラベルを端末内に記録します。外部には送信しません。</string>
+    <string name="btn_show_debug">記録を見る</string>
+    <string name="btn_clear_debug">記録を消す</string>
+    <string name="debug_empty">まだ記録がありません。ONにしてから、コピーなどを試してみてください。</string>
+    <string name="debug_cleared">記録を消しました</string>
 </resources>

@@ -41,6 +41,25 @@ class PetAccessibilityService : AccessibilityService() {
         /** 補助判定でコピーとみなすのに必要な、選択の最低継続時間(ミリ秒) */
         private const val COPY_MIN_SELECT_MS = 300L
 
+        /** ノードの親をたどる最大段数 */
+        private const val COPY_NODE_SEARCH_DEPTH = 6
+
+        /** メニュー項目を探すときに見るノード数の上限。重くならないための歯止め */
+        private const val MENU_SEARCH_LIMIT = 300
+
+        /** コピー後に出る表示を、この時間内は重複して数えない */
+        private const val CLIPBOARD_OVERLAY_COOLDOWN_MS = 1200L
+
+        /** コピー後の通知ウィンドウを見分ける手がかり */
+        private val CLIPBOARD_WINDOW_HINTS = listOf(
+            "clipboard", "copy", "clipper", "clipoverlay"
+        )
+
+        /** メニュー判定の結果 */
+        private const val MENU_NONE = 0
+        private const val MENU_COPY = 1
+        private const val MENU_PASTE = 2
+
         /** メニュー項目のラベルとみなす最大長。これを超える文字列は本文と判断する */
         private const val COPY_LABEL_MAX_LEN = 12
 
@@ -114,6 +133,9 @@ class PetAccessibilityService : AccessibilityService() {
     private var lastSelEnd = -1
     private var lastTextLength = -1
 
+    /** 直近にコピー完了ウィンドウを拾った時刻 */
+    private var lastClipboardOverlayAt = 0L
+
     /** 範囲選択が始まった時刻。コピーの補助判定に使う */
     private var rangeSelectedAt = 0L
 
@@ -162,11 +184,87 @@ class PetAccessibilityService : AccessibilityService() {
         if (event == null) return
         if (OverlayService.instance == null) return
 
+        // デバッグ用: クリック/ウィンドウ変化の内容を記録しておく。
+        // 「コピーが検知できない」ときに、どんなラベルが来ているかを確認するため。
+        if (Prefs.getDebugLog(this) &&
+            (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        ) {
+            recordDebugEvent(event)
+        }
+
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> onTextChanged(event)
             AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> onSelectionChanged(event)
             AccessibilityEvent.TYPE_VIEW_CLICKED -> onClicked(event)
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> onWindowEvent(event)
         }
+    }
+
+    // ---------- デバッグ記録 ----------
+
+    private fun recordDebugEvent(event: AccessibilityEvent) {
+        try {
+            val sb = StringBuilder()
+            sb.append(event.eventTypeToString(event.eventType))
+            val pkg = event.packageName?.toString() ?: ""
+            if (pkg.isNotEmpty()) sb.append(" pkg=").append(pkg)
+            val cls = event.className?.toString() ?: ""
+            if (cls.isNotEmpty()) sb.append(" cls=").append(cls)
+            val cd = event.contentDescription?.toString() ?: ""
+            if (cd.isNotEmpty()) sb.append(" cd=").append(cd.take(30))
+            val tx = event.text?.joinToString("|") ?: ""
+            if (tx.isNotEmpty()) sb.append(" text=").append(tx.take(30))
+
+            // ノード側のラベルも見る
+            val src = try {
+                event.source
+            } catch (e: Throwable) {
+                null
+            }
+            if (src != null) {
+                try {
+                    sb.append(" nodeText=").append((src.text?.toString() ?: "").take(20))
+                    sb.append(" nodeCd=").append((src.contentDescription?.toString() ?: "").take(20))
+                } finally {
+                    try {
+                        @Suppress("DEPRECATION")
+                        src.recycle()
+                    } catch (e: Throwable) {
+                    }
+                }
+            }
+            DebugLog.add(this, sb.toString())
+        } catch (e: Throwable) {
+        }
+    }
+
+    // ---------- ウィンドウイベント: コピー後の「コピーしました」表示を拾う ----------
+
+    /**
+     * コピーすると、システムやアプリが「コピーしました」という小さな表示を出す。
+     * これは別ウィンドウとして現れることがあり、パッケージ名やクラス名に
+     * clipboard / copy といった手がかりが入る。
+     * その出現をコピーの合図として使う。
+     */
+    private fun onWindowEvent(event: AccessibilityEvent) {
+        if (!OverlayService.watchCopy) return
+
+        val pkg = event.packageName?.toString()?.lowercase() ?: ""
+        val cls = event.className?.toString()?.lowercase() ?: ""
+        val hint = pkg + " " + cls
+        val looksLikeClipboardOverlay = CLIPBOARD_WINDOW_HINTS.any { hint.contains(it) }
+        if (!looksLikeClipboardOverlay) return
+
+        // ウィンドウが出た直後だけ反応(同じウィンドウで連続発火しないように)
+        val now = System.currentTimeMillis()
+        if (now - lastClipboardOverlayAt < CLIPBOARD_OVERLAY_COOLDOWN_MS) return
+        lastClipboardOverlayAt = now
+
+        cancelPendingDelete()
+        OverlayService.reactCopy()
     }
 
     // ---------- 通常の文字変化 ----------
@@ -387,6 +485,24 @@ class PetAccessibilityService : AccessibilityService() {
             }
         }
 
+        // ラベルが取れなかったときの最後の手段:
+        // 画面内を探して「コピー」「貼り付け」と書かれたノードを見つけ、
+        // クリックされたノードと位置が重なっていればそのボタンだと判断する。
+        if (actionLabel == null) {
+            when (menuActionAtClickedNode(event)) {
+                MENU_COPY -> if (OverlayService.watchCopy) {
+                    cancelPendingDelete()
+                    OverlayService.reactCopy()
+                    return
+                }
+                MENU_PASTE -> if (OverlayService.watchPaste) {
+                    OverlayService.reactPaste()
+                    return
+                }
+                else -> { /* 何もしない */ }
+            }
+        }
+
         // ---------- 送信ボタンで入力欄が空になる形の改行 ----------
         if (!OverlayService.watchEnter) return
         if (!Prefs.getEnterOnSubmit(this)) return
@@ -420,15 +536,134 @@ class PetAccessibilityService : AccessibilityService() {
 
     /**
      * クリックされた要素のラベルを取り出す。
-     * テキスト選択メニューの項目は、contentDescription か text のどちらかに入る。
-     * どちらも無ければ判定できないので null を返す。
+     *
+     * テキスト選択メニューの「コピー」「貼り付け」は、ラベルが
+     *  - event.contentDescription
+     *  - event.text
+     *  - event.source(ノード) の contentDescription / text
+     *  - その親ノードの contentDescription / text
+     * のどこかに入る。イベント側だけでは空のことが多いので、ノードも辿る。
      */
     private fun clickedActionLabel(event: AccessibilityEvent): String? {
+        // 1) イベント自身が持っているラベル
         val cd = event.contentDescription?.toString()?.trim()
-        if (!cd.isNullOrEmpty()) return cd
+        if (!cd.isNullOrEmpty() && cd.length <= COPY_LABEL_MAX_LEN) return cd
         val tx = event.text?.joinToString(" ")?.trim()
-        if (!tx.isNullOrEmpty()) return tx
+        if (!tx.isNullOrEmpty() && tx.length <= COPY_LABEL_MAX_LEN) return tx
+
+        // 2) ノードを辿る。ラベルは子や親に入っていることがある
+        val source = try {
+            event.source
+        } catch (e: Throwable) {
+            null
+        }
+        if (source == null) return null
+
+        try {
+            var node: android.view.accessibility.AccessibilityNodeInfo? = source
+            var depth = 0
+            while (node != null && depth < COPY_NODE_SEARCH_DEPTH) {
+                val label = nodeLabel(node)
+                if (label != null) return label
+                node = try {
+                    node.parent
+                } catch (e: Throwable) {
+                    null
+                }
+                depth++
+            }
+        } catch (e: Throwable) {
+            // ノードが取れなくなっても致命的ではない
+        } finally {
+            try {
+                @Suppress("DEPRECATION")
+                source.recycle()
+            } catch (e: Throwable) {
+            }
+        }
         return null
+    }
+
+    /** ノード1つ分のラベル候補(短いものだけ)を返す */
+    private fun nodeLabel(node: android.view.accessibility.AccessibilityNodeInfo): String? {
+        val cd = node.contentDescription?.toString()?.trim()
+        if (!cd.isNullOrEmpty() && cd.length <= COPY_LABEL_MAX_LEN) return cd
+        val tx = node.text?.toString()?.trim()
+        if (!tx.isNullOrEmpty() && tx.length <= COPY_LABEL_MAX_LEN) return tx
+        return null
+    }
+
+    /**
+     * 画面内のノードを幅優先で探し、「コピー」「貼り付け」と書かれたノードを見つける。
+     * クリックされたノードの位置と重なっていれば、そのメニュー項目が押されたと判断する。
+     *
+     * ラベルがイベントにもノードにも入っていない場合の保険。
+     * 探索は深さと個数に上限を設けて、打鍵のたびに走っても重くならないようにする。
+     */
+    private fun menuActionAtClickedNode(event: AccessibilityEvent): Int {
+        val clicked = try {
+            event.source
+        } catch (e: Throwable) {
+            null
+        } ?: return MENU_NONE
+
+        try {
+            val clickedRect = android.graphics.Rect()
+            clicked.getBoundsInScreen(clickedRect)
+
+            // クリックされたノードの祖先をたどり、その配下だけを見る。
+            // (画面全体を探すと重いので、まずは近い範囲に絞る)
+            var root: android.view.accessibility.AccessibilityNodeInfo? = clicked
+            var up = 0
+            while (root != null && up < COPY_NODE_SEARCH_DEPTH) {
+                root = try {
+                    root.parent
+                } catch (e: Throwable) {
+                    null
+                }
+                up++
+            }
+            // 祖先が取れない/浅すぎるときは、クリックされたノード自身を起点にする
+            val start = root ?: clicked
+
+            val queue = ArrayDeque<android.view.accessibility.AccessibilityNodeInfo>()
+            queue.add(start)
+            var visited = 0
+            while (queue.isNotEmpty() && visited < MENU_SEARCH_LIMIT) {
+                val node = queue.removeFirst()
+                visited++
+
+                val label = nodeLabel(node)
+                if (label != null) {
+                    if (isCopyLabel(label) || isPasteLabel(label)) {
+                        val r = android.graphics.Rect()
+                        node.getBoundsInScreen(r)
+                        // クリック位置がそのノードの範囲と重なっているか
+                        val hit = r.contains(clickedRect.centerX(), clickedRect.centerY()) ||
+                            android.graphics.Rect.intersects(r, clickedRect)
+                        if (hit) {
+                            return if (isCopyLabel(label)) MENU_COPY else MENU_PASTE
+                        }
+                    }
+                }
+
+                for (i in 0 until node.childCount) {
+                    try {
+                        node.getChild(i)?.let { queue.add(it) }
+                    } catch (e: Throwable) {
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            // 探索に失敗しても他の判定は続ける
+        } finally {
+            try {
+                @Suppress("DEPRECATION")
+                clicked.recycle()
+            } catch (e: Throwable) {
+            }
+        }
+        return MENU_NONE
     }
 
     /**

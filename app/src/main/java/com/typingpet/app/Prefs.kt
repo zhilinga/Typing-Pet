@@ -59,6 +59,12 @@ object Prefs {
     fun setCopyBySelection(context: Context, value: Boolean) =
         sp(context).edit().putBoolean("copyBySelection", value).apply()
 
+    // 検知のデバッグ記録を取るか(コピーが反応しないときの調査用)
+    fun getDebugLog(context: Context): Boolean =
+        sp(context).getBoolean("debugLog", false)
+    fun setDebugLog(context: Context, value: Boolean) =
+        sp(context).edit().putBoolean("debugLog", value).apply()
+
     // 表示位置
     fun getPosX(context: Context): Int = sp(context).getInt("posX", 40)
     fun getPosY(context: Context): Int = sp(context).getInt("posY", 200)

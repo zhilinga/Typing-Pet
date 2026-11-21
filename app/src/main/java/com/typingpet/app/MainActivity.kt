@@ -579,6 +579,20 @@ class MainActivity : Activity() {
             ) { checked ->
                 Prefs.setCopyBySelection(this@MainActivity, checked)
             })
+
+            addView(divider())
+            addView(switchRow(
+                getString(R.string.switch_debug_title),
+                getString(R.string.switch_debug_desc),
+                Prefs.getDebugLog(this@MainActivity)
+            ) { checked ->
+                Prefs.setDebugLog(this@MainActivity, checked)
+            })
+            addView(spacer(8))
+            addView(Button(this@MainActivity).apply {
+                text = getString(R.string.btn_show_debug)
+                setOnClickListener { showDebugLog() }
+            })
         })
 
         basicBox.addView(spacer(16))
@@ -1245,6 +1259,35 @@ class MainActivity : Activity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    // ---------- 検知のデバッグ記録 ----------
+
+    /**
+     * 実際に受け取ったイベントを表示する。
+     * コピーが反応しないときに、どんなラベル・パッケージで来ているかを確かめるため。
+     */
+    private fun showDebugLog() {
+        val body = DebugLog.tail(this, 150).ifEmpty { getString(R.string.debug_empty) }
+        val scroll = ScrollView(this).apply {
+            setPadding(dp(16), dp(8), dp(16), dp(0))
+            addView(TextView(this@MainActivity).apply {
+                text = body
+                textSize = 11f
+                typeface = Typeface.MONOSPACE
+                setTextColor(sub)
+                setTextIsSelectable(true)
+            })
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.btn_show_debug))
+            .setView(scroll)
+            .setPositiveButton(getString(R.string.btn_ok), null)
+            .setNeutralButton(getString(R.string.btn_clear_debug)) { _, _ ->
+                DebugLog.clear(this)
+                Toast.makeText(this, getString(R.string.debug_cleared), Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     // ---------- ホーム画面アイコン(ショートカット) ----------

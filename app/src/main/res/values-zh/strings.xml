@@ -123,4 +123,10 @@
     <string name="desc_copy_limit">※ 复制通过「检测你按了选区菜单里的复制按钮」来判定。不读取剪贴板内容（Android 10 起普通应用也无法读取）。</string>
     <string name="switch_copy_selection_title">取消选区也算作复制</string>
     <string name="switch_copy_selection_desc">开启后，不用菜单直接结束选区也会当作复制。快速滑动选择时容易误触发。</string>
+    <string name="switch_debug_title">记录检测日志</string>
+    <string name="switch_debug_desc">用于排查复制等没反应的原因。只在本机记录收到的事件类型和标签，不向外发送。</string>
+    <string name="btn_show_debug">查看记录</string>
+    <string name="btn_clear_debug">清空记录</string>
+    <string name="debug_empty">还没有记录。开启后去试着复制一下。</string>
+    <string name="debug_cleared">已清空记录</string>
 </resources>

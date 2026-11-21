@@ -123,4 +123,10 @@
     <string name="desc_copy_limit">※ 복사는 선택 메뉴의 복사 버튼을 누른 것을 보고 판정합니다. 클립보드 내용은 읽지 않습니다(Android 10 이상에서 일반 앱은 읽을 수 없습니다).</string>
     <string name="switch_copy_selection_title">선택 접힘도 복사로 처리</string>
     <string name="switch_copy_selection_desc">ON이면 선택 메뉴를 쓰지 않고 선택을 끝낸 경우에도 복사로 반응합니다. 빠른 스크롤 선택에서 오반응하기 쉬워집니다.</string>
+    <string name="switch_debug_title">감지 기록 수집</string>
+    <string name="switch_debug_desc">복사 등이 반응하지 않을 때 조사용입니다. 받은 이벤트 종류와 라벨을 기기 내에만 기록하며 외부로 보내지 않습니다.</string>
+    <string name="btn_show_debug">기록 보기</string>
+    <string name="btn_clear_debug">기록 지우기</string>
+    <string name="debug_empty">아직 기록이 없습니다. ON으로 바꾸고 복사 등을 시도해 보세요.</string>
+    <string name="debug_cleared">기록을 지웠습니다</string>
 </resources>
