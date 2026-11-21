@@ -62,8 +62,19 @@ class PetAccessibilityService : AccessibilityService() {
          * 「候補を選んで確定した」とみなす。
          * 打鍵の直後に貼り付けは起きない(選択メニューを開いて押すため)ので、
          * この時間窓を「確定」と「貼り付け」の切り分けに使える。
+         *
+         * 長い拼音(四字熟語など)は打鍵に時間がかかり、確定まで数秒かかる。
+         * 短すぎると確定が「貼り付け」と誤判定されるので長めに取る。
          */
-        private const val IME_COMMIT_WINDOW_MS = 1500L
+        private const val IME_COMMIT_WINDOW_MS = 3000L
+
+        /**
+         * これ以下の文字数の漢字・仮名・ハングルがまとめて入ったときは、
+         * 入力法の信号がなくても「候補の確定」とみなす。
+         * 四字熟語のような短い確定を貼り付けと誤認しないための保険。
+         * 代償: 4文字以下の中国語を貼り付けた場合は貼り付けと判定されない。
+         */
+        private const val SHORT_CJK_COMMIT_MAX = 4
 
         /** 入力欄フォーカスの確認結果をキャッシュする時間 */
         private const val EDIT_FOCUS_CACHE_MS = 400L
@@ -350,8 +361,12 @@ class PetAccessibilityService : AccessibilityService() {
         val gap = now - lastImeEventAt
 
         if (gap < IME_EVENT_BURST_MS) {
-            // 同じ打鍵の残りの更新
+            // 同じ打鍵の残りの更新。
+            // 連続して打っている間は「最後に打った時刻」も更新する。
+            // ここを更新しないと、長い拼音を打っている途中で時刻が古いままになり、
+            // 確定した瞬間に「入力法の打鍵ではない」と判定されてしまう。
             lastImeEventAt = now
+            lastImeKeyAt = now
             return true
         }
 
@@ -483,6 +498,14 @@ class PetAccessibilityService : AccessibilityService() {
         // ASCII の文字なら英字の入力途中なので、確定とはみなさない。
         val candidateCommit = imeRecent && inserted.any { it.code >= 0x2E80 }
 
+        // 入力法の信号が間に合わなかった場合の保険。
+        // 短い漢字列(四字熟語など)がまとめて入るのは、まず候補の確定。
+        // 入力法の検知を切っている場合は従来どおりの判定に戻す(逃げ道)。
+        val shortCjk = Prefs.getImeWatching(this) &&
+            inserted.isNotEmpty() &&
+            inserted.length <= SHORT_CJK_COMMIT_MAX &&
+            inserted.all { it.code >= 0x2E80 }
+
         // 貼り付け判定。アクセシビリティイベントに「貼り付け」を示す情報は無いので、
         // 「一度に入った文字数」と「同時に消えた文字数」から推定する。
         //  - 変換確定(拼音→漢字): 拼音が消えて漢字が入る → removed > 0、入るのは数文字
@@ -492,7 +515,7 @@ class PetAccessibilityService : AccessibilityService() {
         // 入力法の打鍵の直後に漢字などが入った場合(candidateCommit)は候補の確定とみなして、
         // 貼り付け判定をしない。
         // こうしないと候補の確定が貼り付けとして反応してしまう。
-        if (watchPaste && !candidateCommit) {
+        if (watchPaste && !candidateCommit && !shortCjk) {
             val needLen = pasteMinLen()
             val pasted = if (change.removed == 0) {
                 inserted.length >= needLen

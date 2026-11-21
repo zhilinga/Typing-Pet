@@ -117,7 +117,7 @@
     <string name="backup_pick_title">백업 저장 위치</string>
     <string name="restore_pick_title">백업 파일 선택</string>
     <string name="label_paste_min">붙여넣기로 판단할 글자 수</string>
-    <string name="desc_paste_min">한 번에 이만큼의 글자가 들어오면 붙여넣기로 봅니다. 작을수록 반응하기 쉽지만, 병음에 공백을 넣는 입력기에서는 오반응이 늘어납니다.</string>
+    <string name="desc_paste_min">한 번에 이만큼의 글자가 들어오면 붙여넣기로 봅니다. 다만 입력기 타건 직후 확정된 글자와 4자 이하의 한자·가나·한글은 후보 확정으로 봅니다.</string>
     <string name="key_copy">📄 복사했을 때</string>
     <string name="btn_add_copy_trigger">+ 📄 복사 반응 추가</string>
     <string name="desc_copy_limit">※ 복사는 선택 메뉴의 복사 버튼을 누른 것을 보고 판정합니다. 클립보드 내용은 읽지 않습니다(Android 10 이상에서 일반 앱은 읽을 수 없습니다).</string>

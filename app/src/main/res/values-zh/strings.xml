@@ -117,7 +117,7 @@
     <string name="backup_pick_title">选择备份保存位置</string>
     <string name="restore_pick_title">选择备份文件</string>
     <string name="label_paste_min">判定为粘贴的字数</string>
-    <string name="desc_paste_min">一次进来这么多字就算作粘贴。设得小更容易触发，但打字时会插入空格的拼音输入法也更容易误触发。</string>
+    <string name="desc_paste_min">一次进来这么多字就算作粘贴。但输入法打键后紧接着上屏的字，以及 4 字以内的汉字/假名/韩文，都当作选了候选词，不算粘贴。</string>
     <string name="key_copy">📄 复制时</string>
     <string name="btn_add_copy_trigger">＋ 📄 复制的反应</string>
     <string name="desc_copy_limit">※ 复制通过「检测你按了选区菜单里的复制按钮」来判定。不读取剪贴板内容（Android 10 起普通应用也无法读取）。</string>

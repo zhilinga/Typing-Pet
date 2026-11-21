@@ -117,7 +117,7 @@
     <string name="backup_pick_title">バックアップの保存先</string>
     <string name="restore_pick_title">バックアップファイルを選ぶ</string>
     <string name="label_paste_min">貼り付けと判定する文字数</string>
-    <string name="desc_paste_min">一度にこれだけの文字が入ったら貼り付けとみなします。小さいと反応しやすいですが、拼音にスペースを入れる入力法では誤反応しやすくなります。</string>
+    <string name="desc_paste_min">一度にこれだけの文字が入ったら貼り付けとみなします。ただし入力法の打鍵直後の確定、および4文字以下の漢字・仮名・ハングルは候補の確定とみなし、貼り付け扱いにしません。</string>
     <string name="key_copy">📄 コピーしたとき</string>
     <string name="btn_add_copy_trigger">＋ 📄 コピーの反応を追加</string>
     <string name="desc_copy_limit">※ コピーは「選択メニューのコピーボタン」を押したことを見て判定します。クリップボードの中身は読みません（Android 10 以降、一般のアプリは読めません）。</string>
