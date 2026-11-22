@@ -76,6 +76,14 @@ class PetAccessibilityService : AccessibilityService() {
          */
         private const val SHORT_CJK_COMMIT_MAX = 4
 
+        /**
+         * 貼り付けと判定した直後の静默時間。
+         * 貼り付けた直後に入力法や入力欄が「変化なし」のイベントをもう一度出すことがあり、
+         * それを拾うと貼り付けの後に打鍵の反応がもう一度出てしまう。
+         * この時間内は文字変化を無視する。
+         */
+        private const val PASTE_QUIET_MS = 450L
+
         /** 入力欄フォーカスの確認結果をキャッシュする時間 */
         private const val EDIT_FOCUS_CACHE_MS = 400L
 
@@ -170,6 +178,9 @@ class PetAccessibilityService : AccessibilityService() {
 
     /** 直近に入力法の打鍵があった時刻。直後の「出字」を候補の確定とみなす */
     private var lastImeKeyAt = 0L
+
+    /** 直近に貼り付けとして反応した時刻。直後の重複イベントを無視する */
+    private var lastPasteAt = 0L
 
     /** 端末の入力法パッケージ一覧(一度だけ取得する) */
     private var imePackagesCache: Set<String>? = null
@@ -457,6 +468,16 @@ class PetAccessibilityService : AccessibilityService() {
         val after = event.text?.firstOrNull()?.toString()
         val change = after?.let { findChange(event, it) }
         if (after == null || change == null) {
+            // 貼り付け直後の静默時間内は、この「変化なし」の文字変化を無視する。
+            // 入力法や入力欄が貼り付けの後にもう一度これを出し、
+            // 拾うと貼り付けの後に打鍵の反応がもう一度出てしまうため。
+            // 実際に文字が入ったイベントは下で普通に処理するので、
+            // 貼り付けた直後に打ち始めても取りこぼさない。
+            if (lastPasteAt > 0 &&
+                System.currentTimeMillis() - lastPasteAt <= PASTE_QUIET_MS
+            ) {
+                return
+            }
             OverlayService.reactIfRunning()
             return
         }
@@ -523,6 +544,7 @@ class PetAccessibilityService : AccessibilityService() {
                 inserted.length >= maxOf(PASTE_REPLACE_LEN, needLen)
             }
             if (pasted && !pinyinish) {
+                lastPasteAt = System.currentTimeMillis()
                 OverlayService.reactPaste()
                 return
             }
@@ -691,6 +713,7 @@ class PetAccessibilityService : AccessibilityService() {
                 }
             } else if (isPasteLabel(actionLabel)) {
                 if (OverlayService.watchPaste) {
+                    lastPasteAt = System.currentTimeMillis()
                     OverlayService.reactPaste()
                     return
                 }
@@ -708,6 +731,7 @@ class PetAccessibilityService : AccessibilityService() {
                     return
                 }
                 MENU_PASTE -> if (OverlayService.watchPaste) {
+                    lastPasteAt = System.currentTimeMillis()
                     OverlayService.reactPaste()
                     return
                 }

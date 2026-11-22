@@ -16,8 +16,8 @@ android {
         applicationId "com.typingpet.app"
         minSdk 24
         targetSdk 34
-        versionCode 18
-        versionName "1.10.3-zh"
+        versionCode 19
+        versionName "1.10.4-zh"
     }
 
     signingConfigs {
