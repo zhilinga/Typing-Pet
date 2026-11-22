@@ -67,27 +67,45 @@ class OverlayService : Service() {
 
         /** 文字が消されただけのときに呼ぶ */
         fun reactDelete() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.DELETE_KEY] ?: -1) } } }
+            reactSpecial(Prefs.DELETE_KEY)
+        }
+
+        /**
+         * 特殊キー(削除・スペース・改行・貼り付け・コピー)の反応。
+         *
+         * そのキーに画像が割り当てられていない場合は「何も表示しない」。
+         * 以前は -1 を渡していたが、-1 は「文字入力」の扱いになり、
+         * 削除したのに打字の表情が出てしまっていた。
+         */
+        private fun reactSpecial(key: String) {
+            instance?.let { s ->
+                s.handler.post {
+                    s.pets.values.forEach { p ->
+                        val idx = p.specialIdx[key] ?: return@forEach
+                        p.view.react(idx)
+                    }
+                }
+            }
         }
 
         /** スペースが入力されたときに呼ぶ */
         fun reactSpace() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.SPACE_KEY] ?: -1) } } }
+            reactSpecial(Prefs.SPACE_KEY)
         }
 
         /** 改行が入力されたときに呼ぶ */
         fun reactEnter() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.ENTER_KEY] ?: -1) } } }
+            reactSpecial(Prefs.ENTER_KEY)
         }
 
         /** 貼り付けが行われたときに呼ぶ */
         fun reactPaste() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.PASTE_KEY] ?: -1) } } }
+            reactSpecial(Prefs.PASTE_KEY)
         }
 
         /** コピーが行われたときに呼ぶ */
         fun reactCopy() {
-            instance?.let { s -> s.handler.post { s.pets.values.forEach { p -> p.view.react(p.specialIdx[Prefs.COPY_KEY] ?: -1) } } }
+            reactSpecial(Prefs.COPY_KEY)
         }
 
         fun reactIfRunning() {

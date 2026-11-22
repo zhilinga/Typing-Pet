@@ -84,6 +84,13 @@ class PetAccessibilityService : AccessibilityService() {
          */
         private const val PASTE_QUIET_MS = 450L
 
+        /**
+         * 削除の重複を防ぐ時間。
+         * 1回の削除で「文字変化」と「カーソル移動」の両方が届くことがあり、
+         * そのまま拾うと削除の反応が2回出てしまう。
+         */
+        private const val DELETE_DEDUPE_MS = 120L
+
         /** 入力欄フォーカスの確認結果をキャッシュする時間 */
         private const val EDIT_FOCUS_CACHE_MS = 400L
 
@@ -182,6 +189,9 @@ class PetAccessibilityService : AccessibilityService() {
     /** 直近に貼り付けとして反応した時刻。直後の重複イベントを無視する */
     private var lastPasteAt = 0L
 
+    /** 直近に削除として反応した時刻。削除の重複を防ぐ */
+    private var lastDeleteAt = 0L
+
     /** 端末の入力法パッケージ一覧(一度だけ取得する) */
     private var imePackagesCache: Set<String>? = null
 
@@ -199,6 +209,31 @@ class PetAccessibilityService : AccessibilityService() {
     private val clearHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var pendingDelete: Runnable? = null
 
+    /**
+     * 削除として反応する。
+     * 1回の削除で文字変化とカーソル移動の両方が届くことがあるため、
+     * ごく短い時間内の重複は無視する。
+     */
+    private fun reactDeleteOnce() {
+        val now = System.currentTimeMillis()
+        if (now - lastDeleteAt <= DELETE_DEDUPE_MS) return
+        lastDeleteAt = now
+        cancelPendingDelete()
+        OverlayService.reactDelete()
+    }
+
+    /**
+     * 削除として反応する(重複判定なし)。
+     * 入力欄が空になったときの確定処理から呼ぶ。
+     * そこは既に CLEAR_CONFIRM_MS 待っているので、
+     * さらに重複判定をかけると本物の削除まで落としてしまう。
+     */
+    private fun reactDeleteForced() {
+        lastDeleteAt = System.currentTimeMillis()
+        cancelPendingDelete()
+        OverlayService.reactDelete()
+    }
+
     /** 保留中の削除を取り消す(送信と判明したとき) */
     private fun cancelPendingDelete() {
         pendingDelete?.let { clearHandler.removeCallbacks(it) }
@@ -214,13 +249,14 @@ class PetAccessibilityService : AccessibilityService() {
     private fun deferClearReaction(watchDelete: Boolean, watchEnter: Boolean) {
         cancelPendingDelete()
         if (!watchDelete) {
-            // 削除の反応がなければ、改行の判定だけ待てばよい
-            if (!watchEnter) OverlayService.reactIfRunning()
+            // 削除の反応が設定されていないなら、ここでは何もしない。
+            // 以前は reactIfRunning() を呼んでいたが、それは打字の表情であり、
+            // 削除したのに打字の反応が出てしまっていた。
             return
         }
         val runnable = Runnable {
             pendingDelete = null
-            OverlayService.reactDelete()
+            reactDeleteForced()
         }
         pendingDelete = runnable
         clearHandler.postDelayed(runnable, CLEAR_CONFIRM_MS)
@@ -491,14 +527,22 @@ class PetAccessibilityService : AccessibilityService() {
             // そちらを改行として扱い、この削除は取り消す。
             if (after.isEmpty()) {
                 cancelPendingDelete()
+                // 削除か改行のどちらかが設定されていれば、それを待って判定する。
+                // どちらも無ければ何もしない(打字の表情を出さない)。
                 if (watchDelete || watchEnter) {
                     deferClearReaction(watchDelete, watchEnter)
-                } else {
-                    OverlayService.reactIfRunning()
                 }
                 return
             }
-            if (change.removed > 0 && watchDelete) OverlayService.reactDelete() else OverlayService.reactIfRunning()
+            // 文字が減った = 削除。
+            // 削除の反応が設定されていない場合に reactIfRunning() を呼ぶと、
+            // 削除したのに打字の表情が出てしまうので、何もしない。
+            if (change.removed > 0) {
+                if (watchDelete) reactDeleteOnce()
+                return
+            }
+            // 文字数も入力量も変わっていない(カーソル移動など)
+            OverlayService.reactIfRunning()
             return
         }
 
@@ -685,7 +729,7 @@ class PetAccessibilityService : AccessibilityService() {
 
         // カーソルが前へ動いた → 削除された可能性
         if (start < prevStart && OverlayService.watchDelete) {
-            OverlayService.reactDelete()
+            reactDeleteOnce()
             return
         }
     }
