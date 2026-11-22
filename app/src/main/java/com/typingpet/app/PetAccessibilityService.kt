@@ -131,43 +131,52 @@ class PetAccessibilityService : AccessibilityService() {
     /** 貼り付け判定に使う最小文字数(設定値を反映) */
     private fun pasteMinLen(): Int = Prefs.getPasteMinLen(this)
 
-    /**
-     * いま入力中の文字列が「拼音の入力途中」らしいか。
-     *
-     * 一部の入力法は拼音を打つときに「字母＋スペース」をまとめて入れるため、
-     * 2文字以上が一度に入った = 貼り付け、と単純に判定すると毎回貼り付けになる。
-     * 入力位置の直前を見て、ラテン小文字とスペースだけが並んでいるなら
-     * 拼音の入力途中と判断して、貼り付け扱いにしない。
-     *
-     * 例: "ni hao " の直後 → 拼音らしい / "Hello world" の直後 → 単語間の空白であり得るが
-     *     大文字や記号が混ざるので拼音とは判定しにくい
-     */
-    private fun looksLikePinyinInput(text: String, insertAt: Int, inserted: String): Boolean {
-        // 今回入った文字に、拼音として不自然なもの(漢字・記号・大文字)が混ざっていたら拼音ではない
-        if (inserted.any { it.isUpperCase() }) return false
-        if (!inserted.all { it.isLetter() || it == ' ' || it == '\u3000' || it == '\'' }) return false
+    /** ASCII の英字(大文字・小文字の両方)。漢字や仮名は含めない */
+    private fun isLatinLetter(c: Char): Boolean =
+        c in 'a'..'z' || c in 'A'..'Z'
 
+    /** 打字の区切りとして扱う空白類 */
+    private fun isTypingSpace(c: Char): Boolean =
+        c == ' ' || c == '\u3000' || c == '\''
+
+    /**
+     * いまの入力が「打字の途中」らしいか(貼り付けではない)。
+     *
+     * 貼り付け判定は「一度に複数文字が入った」ことを手がかりにするが、
+     * 次の2つは正規の打字であり、貼り付けと誤認してはいけない:
+     *
+     *  1. 拼音の入力途中
+     *     入力法によっては「字母＋スペース」をまとめて入れる。
+     *
+     *  2. 英字の入力(大文字小文字を問わない)
+     *     自動大文字化や Shift で「Hello」のように大文字が混ざる。
+     *     以前は大文字が混ざると即「貼り付け」と判定していたため、
+     *     大文字で打ち始めると毎回貼り付けになっていた。
+     *
+     * 判定は「入力位置の直前が英字/空白だけか」で行う。
+     * 貼り付けたい文章は漢字や記号を含むことが多く、その場合は下の条件を満たさない。
+     */
+    private fun looksLikeTyping(text: String, insertAt: Int, inserted: String): Boolean {
+        // 今回入った文字が「英字・空白・アポストロフィ」だけか。
+        // 漢字や記号が混ざっていれば、貼り付けか候補の確定なので打字とはみなさない。
+        if (inserted.isEmpty()) return false
+        // 英字かどうかは ASCII の範囲で判定する。
+        // Char.isLetter() は漢字・仮名・ハングルにも true を返すため、
+        // それを使うと「中国語の貼り付け」まで打字と誤認してしまう。
+        val onlyTypingChars = inserted.all { isLatinLetter(it) || isTypingSpace(it) }
+        if (!onlyTypingChars) return false
+
+        // 直前の文字列が英字/空白/アポストロフィだけなら、打字の続きとみなす。
         val from = maxOf(0, insertAt - PINYIN_LOOKBEHIND)
         val window = text.substring(from, insertAt)
-        if (window.isEmpty()) {
-            // 直前が空 = 入力欄の先頭。1〜3文字のラテン小文字だけなら拼音の打ち始め
-            val core = inserted.trim()
-            return core.isNotEmpty() && core.length <= 3 && core.all { it in 'a'..'z' }
-        }
-
-        // 直前のウィンドウがラテン小文字・スペース・アポストロフィのみで構成されているか
         val tail = window.takeLast(PINYIN_LOOKBEHIND)
-        val onlyPinyinChars = tail.all {
-            it in 'a'..'z' || it == ' ' || it == '\u3000' || it == '\''
-        }
-        if (!onlyPinyinChars) return false
+        val onlyTypingAround = tail.all { isLatinLetter(it) || isTypingSpace(it) }
+        if (!onlyTypingAround) return false
 
-        // 連続した空白だけをまとめて入れた場合は拼音とは限らない(整形貼り付けの可能性)
-        val insertedTrim = inserted.trim()
-        if (insertedTrim.isEmpty()) return false
+        // 連続した空白だけをまとめて入れた場合は打字とは限らない(整形貼り付けの可能性)
+        if (inserted.trim().isEmpty()) return false
 
-        // 英単語を打っているだけの可能性はあるが、この判定は
-        // 「貼り付けと誤認して毎回反応する」のを防ぐことを優先する。
+        // ここまで来たら「英字を打っている途中」。
         // 誤って貼り付けが反応しない場合は、設定のしきい値を下げれば拾える。
         return true
     }
@@ -552,7 +561,7 @@ class PetAccessibilityService : AccessibilityService() {
         val inserted = after.substring(change.start, change.end)
 
         // 拼音の入力途中か。入力法が「字母＋スペース」をまとめて入れる形への対策
-        val pinyinish = looksLikePinyinInput(after, change.start, inserted)
+        val typing = looksLikeTyping(after, change.start, inserted)
 
         // 入力法の打鍵の直後か
         val imeRecent = Prefs.getImeWatching(this) &&
@@ -587,7 +596,7 @@ class PetAccessibilityService : AccessibilityService() {
             } else {
                 inserted.length >= maxOf(PASTE_REPLACE_LEN, needLen)
             }
-            if (pasted && !pinyinish) {
+            if (pasted && !typing) {
                 lastPasteAt = System.currentTimeMillis()
                 OverlayService.reactPaste()
                 return
@@ -619,13 +628,10 @@ class PetAccessibilityService : AccessibilityService() {
         // 一度に入った文字の数だけ反応させる。
         // 例: 候補から「你好」を選ぶと 2 回ぶん表情が進む。
         //
-        // ただし拼音の入力途中のように「英小文字＋空白」がまとめて入る場合は、
-        // それは打鍵1回ぶんなので 1 回だけにする。
-        val typingLetters = inserted.isNotEmpty() && inserted.all {
-            it in 'a'..'z' || it == ' ' || it == '\u3000' || it == '\''
-        }
+        // ただし英字を打っている途中(拼音・大文字小文字を問わず)は
+        // 1打鍵ぶんなので 1 回だけにする。
         val added = inserted.count { it != '\n' && it != '\r' }
-        val times = if (typingLetters) 1 else added.coerceAtLeast(1)
+        val times = if (typing) 1 else added.coerceAtLeast(1)
         val delay = Prefs.getMultiCharDelayMs(this)
 
         OverlayService.reactText(window, newFrom)
